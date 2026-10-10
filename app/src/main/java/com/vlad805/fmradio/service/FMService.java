@@ -32,6 +32,7 @@ import com.vlad805.fmradio.helper.TunerDriverDetector;
 import com.vlad805.fmradio.models.FavoriteStation;
 import com.vlad805.fmradio.service.audio.AudioService;
 import com.vlad805.fmradio.service.audio.LightAudioService;
+import com.vlad805.fmradio.service.audio.MtkAudioService;
 import com.vlad805.fmradio.service.audio.RoutingAudioService;
 import com.vlad805.fmradio.service.fm.FMEventCallback;
 import com.vlad805.fmradio.service.fm.IFMController;
@@ -398,6 +399,11 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
      * @return FMAudioService instance
      */
     private AudioService getAudioService() {
+        if (mTunerDriverKind == TunerDriver.MTK) {
+            // MTK delivers FM audio as PCM via the audio HAL; no hardware loopback.
+            return new MtkAudioService(this);
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // Android 8+
             return new RoutingAudioService(this);

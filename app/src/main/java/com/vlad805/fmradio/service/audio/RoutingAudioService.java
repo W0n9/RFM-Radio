@@ -332,11 +332,6 @@ public class RoutingAudioService extends AudioService implements IAudioRecordabl
 			throw new RecordError("Please allow microphone access before recording");
 		}
 
-		final AudioDeviceInfo fmTuner = findFmTunerInputDevice();
-		if (fmTuner == null) {
-			throw new RecordError("FM Tuner input device not found");
-		}
-
 		final int bufferSize = AudioRecord.getMinBufferSize(
 				48000,
 				AudioFormat.CHANNEL_IN_STEREO,
@@ -346,31 +341,9 @@ public class RoutingAudioService extends AudioService implements IAudioRecordabl
 			throw new RecordError("AudioRecord buffer init failed");
 		}
 
-		final AudioFormat format = new AudioFormat.Builder()
-				.setSampleRate(48000)
-				.setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-				.setChannelMask(AudioFormat.CHANNEL_IN_STEREO)
-				.build();
-
-		final AudioRecord audioRecord;
-		try {
-			audioRecord = new AudioRecord.Builder()
-					.setAudioSource(MediaRecorder.AudioSource.DEFAULT)
-					.setAudioFormat(format)
-					.setBufferSizeInBytes(bufferSize * 2)
-					.build();
-		} catch (Throwable t) {
-			Log.e(TAG, "startAudioRecordRecorder: AudioRecord build failed", t);
-			throw new RecordError("Cannot create AudioRecord");
-		}
-
-		if (audioRecord.getState() != AudioRecord.STATE_INITIALIZED) {
-			audioRecord.release();
-			throw new RecordError("AudioRecord init failed");
-		}
-
-		if (!audioRecord.setPreferredDevice(fmTuner)) {
-			Log.w(TAG, "startAudioRecordRecorder: setPreferredDevice(FM Tuner) returned false");
+		final AudioRecord audioRecord = createFmTunerRecorder(48000, bufferSize * 2);
+		if (audioRecord == null) {
+			throw new RecordError("FM Tuner input device not found or AudioRecord init failed");
 		}
 
 		try {
@@ -583,20 +556,6 @@ public class RoutingAudioService extends AudioService implements IAudioRecordabl
 	/** @return Whether microphone access needed for FM input capture is granted. */
 	private boolean hasRecordAudioPermission() {
 		return mContext.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
-	}
-
-	private AudioDeviceInfo findFmTunerInputDevice() {
-		if (mAudioManager == null) {
-			return null;
-		}
-		for (final AudioDeviceInfo device : mAudioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)) {
-			Log.d(TAG, "input device: type=" + device.getType() + " product=" + device.getProductName());
-			if (device.getType() == AudioDeviceInfo.TYPE_FM_TUNER) {
-				Log.d(TAG, "findFmTunerInputDevice: found " + device.getProductName());
-				return device;
-			}
-		}
-		return null;
 	}
 
 	@SuppressLint("PrivateApi")

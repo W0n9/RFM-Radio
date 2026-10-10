@@ -200,7 +200,8 @@ public class QualcommNative extends AbstractQualcommNativeController {
     public int getRecorderSampleRate() {
         // HAL - 48kHz
         // Legacy - 44.1kHz
-        return mDriverKind == TunerDriver.HAL ? 48000 : 44100;
+        // MTK - 48kHz (Connsys I2S capture rate of the software bridge)
+        return mDriverKind == TunerDriver.LEGACY ? 44100 : 48000;
     }
 
     public void refreshAudioRoute() {

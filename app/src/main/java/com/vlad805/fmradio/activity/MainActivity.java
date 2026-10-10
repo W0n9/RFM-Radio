@@ -158,7 +158,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         final boolean needStartup = Storage.getPrefBoolean(this, C.PrefKey.APP_AUTO_STARTUP, C.PrefDefaultValue.APP_AUTO_STARTUP);
 
         if (needStartup) {
-            if (ensurePlaybackPermissionForLegacyAudio()) {
+            if (ensurePlaybackPermissionForSoftwareAudio()) {
                 startRadio();
             }
         } else {
@@ -268,7 +268,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             // Main play/stop button
             switch (mRadioController.getState().getStatus()) {
                 case IDLE: {
-                    if (ensurePlaybackPermissionForLegacyAudio()) {
+                    if (ensurePlaybackPermissionForSoftwareAudio()) {
                         startRadio();
                     }
                     break;
@@ -448,15 +448,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
     }
 
-    private boolean needsPlaybackPermissionForLegacyAudio() {
+    private boolean needsPlaybackPermissionForSoftwareAudio() {
+        // Software-bridge drivers capture PCM for playback itself, so they
+        // need RECORD_AUDIO even before any recording happens: legacy on
+        // Android 7-, MTK on every API level.
+        if (TunerDriverDetector.getTunerDriver() == TunerDriver.MTK) {
+            return true;
+        }
         return (
             Build.VERSION.SDK_INT < Build.VERSION_CODES.O &&
             TunerDriverDetector.getTunerDriver() == TunerDriver.LEGACY
         );
     }
 
-    private boolean ensurePlaybackPermissionForLegacyAudio() {
-        if (!needsPlaybackPermissionForLegacyAudio() || hasPlaybackPermission()) {
+    private boolean ensurePlaybackPermissionForSoftwareAudio() {
+        if (!needsPlaybackPermissionForSoftwareAudio() || hasPlaybackPermission()) {
             return true;
         }
 

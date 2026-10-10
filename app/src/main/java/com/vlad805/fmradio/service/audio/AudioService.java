@@ -1,9 +1,11 @@
 package com.vlad805.fmradio.service.audio;
 
 import android.content.Context;
+import android.media.AudioDeviceInfo;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
+import android.media.MediaRecorder;
 import static com.vlad805.fmradio.Utils.sleep;
 
 /**
@@ -15,12 +17,66 @@ import static com.vlad805.fmradio.Utils.sleep;
 public abstract class AudioService {
 	protected final AudioManager mAudioManager;
 
-	protected int mSampleRate = 44100; // Default = 8000 (Max with AMR)
+	protected int mSampleRate;
 	protected int mBufferSize = 16384;
 	protected int mAudioSource = 1998;
 
 	public AudioService(Context context) {
+		this(context, 44100);
+	}
+
+	public AudioService(Context context, int sampleRate) {
 		mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+		mSampleRate = sampleRate;
+	}
+
+	/**
+	 * Finds the system's FM tuner input device, if the audio HAL exposes one.
+	 *
+	 * @return FM tuner input device or null
+	 */
+	protected AudioDeviceInfo findFmTunerInputDevice() {
+		if (mAudioManager == null) {
+			return null;
+		}
+		for (final AudioDeviceInfo device : mAudioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)) {
+			if (device.getType() == AudioDeviceInfo.TYPE_FM_TUNER) {
+				return device;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Creates an AudioRecord bound to the FM tuner input device.
+	 *
+	 * @return Initialized recorder, or null when the device or construction fails
+	 */
+	protected AudioRecord createFmTunerRecorder(final int sampleRate, final int bufferSizeBytes) {
+		final AudioDeviceInfo fmTuner = findFmTunerInputDevice();
+		if (fmTuner == null) {
+			return null;
+		}
+		try {
+			final AudioFormat format = new AudioFormat.Builder()
+					.setSampleRate(sampleRate)
+					.setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+					.setChannelMask(AudioFormat.CHANNEL_IN_STEREO)
+					.build();
+			final AudioRecord recorder = new AudioRecord.Builder()
+					.setAudioSource(MediaRecorder.AudioSource.DEFAULT)
+					.setAudioFormat(format)
+					.setBufferSizeInBytes(bufferSizeBytes)
+					.build();
+			if (recorder.getState() != AudioRecord.STATE_INITIALIZED) {
+				recorder.release();
+				return null;
+			}
+			recorder.setPreferredDevice(fmTuner);
+			return recorder;
+		} catch (Throwable t) {
+			return null;
+		}
 	}
 
 	/**
