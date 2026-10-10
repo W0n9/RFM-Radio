@@ -8,6 +8,7 @@ session recover the project's architecture quickly.
 | Area | Document |
 | --- | --- |
 | Qualcomm native FM backend | [`native-fm-backend.md`](native-fm-backend.md) |
+| MediaTek FM port research (cannon/MT6853) | [`mtk-fm-port-research.md`](mtk-fm-port-research.md) |
 
 Treat these documents as navigation aids, not substitutes for reading the files
 being changed. If implementation and documentation disagree, implementation is

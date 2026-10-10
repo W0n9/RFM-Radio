@@ -8,6 +8,7 @@ enum class BackendKind {
     kNone = 0,
     kLegacy,
     kHal,
+    kMtk,
 };
 
 class Backend {

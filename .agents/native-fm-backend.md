@@ -24,12 +24,17 @@ or a device test demonstrate that it can change safely.
 application copies an ABI-specific executable from assets into its private
 files directory, starts it as root, and communicates with it over loopback UDP.
 
-The executable contains two implementations behind the `Backend` interface:
+The executable contains three implementations behind the `Backend` interface:
 
 | Backend | Selection condition | Hardware interface |
 | --- | --- | --- |
 | Legacy | `/dev/radio0` exists | Direct V4L2 and Qualcomm private controls |
 | HAL/FM2 | No `/dev/radio0`, but `fm_helium.so` exists | Dynamically loaded Qualcomm vendor HAL |
+| MTK | Neither above, but `/dev/fm` exists | Direct ioctl to MediaTek `fmradio_drv` (verified on MT6631) |
+
+The MTK backend is landing incrementally; see `.scratch/mtk-fm/spec.md` and
+`.agents/mtk-fm-port-research.md`. This document's MTK chapter is completed by
+that effort's final hardening ticket.
 
 Selection is process-global and lazy. The first command requiring a backend
 calls `create_detected_backend()`, and the selected singleton is retained for
@@ -106,6 +111,16 @@ Android QualcommNative
 | `native/legacy/fmcommon.h` | Legacy constants, state, structs, and event enums |
 | `native/legacy/detector.cpp` | Platform detection through Android properties |
 | `native/legacy/utils.cpp` | Frequency conversion, band limits, filesystem helpers |
+
+### MTK Layer (ticket-staged; see `.scratch/mtk-fm/spec.md`)
+
+| Path | Responsibility |
+| --- | --- |
+| `native/mtk_backend.cpp` | Adapter from `Backend` to MTK driver ioctls |
+| `native/mtk/mtk_ioctl.h` | Verified ioctl numbers, `fm_tune_parm` ABI layout |
+| `native/mtk/mtk_params.*` | Pure mappings (band/spacing/deemphasis/frequency units) |
+| `native/mtk/mtk_dev.*` | fd-scoped ioctl wrappers with errno logging |
+| `native/mtk/mtk_log.h` | `mtk/<scope>` logging |
 
 ### Android Bridge
 
@@ -279,7 +294,7 @@ Common textual errors include:
 | `ERR_UNK_CMD` | Empty or unknown command |
 | `ERR_UNSUPPORTED` | No backend or unsupported device |
 | `ERR_FAILED` | Generic backend operation failure |
-| `ERR_UNV_ANT` | Legacy antenna value rejected |
+| `ERR_UNV_ANT` | Legacy or MTK antenna value rejected |
 | `ERR_CNS_REG` | Legacy region/band could not be set |
 
 `response_t.code` is not transmitted. Only its `data` string is sent over UDP.
@@ -341,7 +356,8 @@ the Java side until a later, different patch is emitted.
 1. Existence of `/dev/radio0` selects legacy.
 2. Existence of `fm_helium.so` in known vendor, system vendor, system_ext, or
    ODM 32/64-bit locations selects HAL.
-3. Otherwise no backend is available.
+3. Existence of `/dev/fm` selects MTK.
+4. Otherwise no backend is available.
 
 Detection tests file existence only. It does not prove that `/dev/radio0` can
 be opened or that the HAL ABI is compatible.
@@ -775,6 +791,7 @@ Host-side GoogleTest is enabled with `RFM_NATIVE_TESTS=ON`. Current tests cover:
 - frequency-list formatting
 - shared sequential-scan result collection
 - legacy sequential-scan state transitions
+- MTK parameter mappings and driver ABI layout
 
 Current host tests do not cover:
 

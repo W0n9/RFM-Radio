@@ -416,7 +416,8 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
 
         switch (mTunerDriverKind) {
             case HAL:
-            case LEGACY: {
+            case LEGACY:
+            case MTK: {
                 return new QualcommNative(this, mTunerDriverKind);
             }
 
