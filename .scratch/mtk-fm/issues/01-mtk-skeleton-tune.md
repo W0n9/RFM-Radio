@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done(commit 04ee910)
 
 - [ ] app 启动时检测到 MTK 后端并进入主界面(native 检测顺序保持高通两条在前,`/dev/fm` 最后;Java 镜像同序)
 - [ ] 开启收音机成功:init 阶段完成芯片 ID/RDS 支持探测,日志带 `mtk/` 前缀;开启失败(含 root/open EACCES)报明确错误而非静默
