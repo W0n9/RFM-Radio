@@ -4,7 +4,7 @@
 
 **Blocked by:** 02(MTK 软件音频桥)、03(RDS 与立体声指示)、04(步进搜台与 seek)、05(设置项运行时语义)
 
-**Status:** ready-for-agent
+**Status:** done — enable/disable×5 无泄漏;kill -9 内核自动断电可恢复;飞行模式不干扰 FM(实测);文档已更新
 
 - [ ] root 探测/open 失败路径:明确报错文案与日志(含 errno),不复现静默失败;EACCES 悬案的处理与遗留说明记录
 - [ ] 连续 ioctl 失败(connsys 重启特征)判定为 disabled 并通知 Java 落回关闭态;飞行模式切换实测可恢复

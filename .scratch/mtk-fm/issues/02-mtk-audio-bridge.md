@@ -4,7 +4,7 @@
 
 **Blocked by:** 01(MTK 后端骨架与最小调台通路)
 
-**Status:** done — 真机已验证出声与录音落盘;WAV 内容电平分析待手机回连后补验
+**Status:** done — 实为 HAL hostless loopback(无 PCM 桥);扬声器=speakerphoneOn+setForceUse 已验证;录音本 ROM 对应用不可用(采集全零),点录音键有不支持提示
 
 - [ ] 开启后耳机出声(软件桥通路,延迟可接受)
 - [ ] AudioRecord 三种打开方式真机实测(Builder+绑定 FM_TUNER 设备 / 隐藏源 1998 / DEFAULT 不绑定),结论与采样率实测值回填代码

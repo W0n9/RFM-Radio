@@ -4,7 +4,7 @@
 
 **Blocked by:** 01(MTK 后端骨架与最小调台通路)
 
-**Status:** implemented — 主机测试 102/102 绿;RDS 上屏与立体声来源裁定待真机验证
+**Status:** done — 真机验证:92.9 台 PS/PI/PTY/立体声/国家码上屏;读线程非阻塞实测确认
 
 - [ ] RDS 电台:PS/RT/PI/PTY/country/AF 逐字段上屏;换台时旧台元数据清除
 - [ ] 无 RDS 台零误报(全零/异常包不产出事件)

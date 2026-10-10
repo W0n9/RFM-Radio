@@ -12,6 +12,7 @@ struct FakeEnv {
     StepScanEnv env;
     std::vector<uint32_t> tuned;
     std::vector<uint32_t> stations;  // kHz with strong signal
+    std::vector<std::pair<uint32_t, int32_t>> graded;  // per-frequency rssi, wins over stations
     int32_t weak_dbm = -100;
     int32_t strong_dbm = -60;
     uint64_t now = 0;
@@ -32,6 +33,12 @@ bool fake_tune(uint32_t freq_khz, void *ctx) {
 bool fake_rssi(int32_t *out, void *ctx) {
     FakeEnv *e = static_cast<FakeEnv *>(ctx);
     const uint32_t cur = e->tuned.empty() ? 0 : e->tuned.back();
+    for (const auto &g : e->graded) {
+        if (cur == g.first) {
+            *out = g.second;
+            return true;
+        }
+    }
     for (uint32_t station : e->stations) {
         if (cur == station) {
             *out = e->strong_dbm;
@@ -207,6 +214,39 @@ TEST(StepScanTest, SeekFullCircleWithoutStationReturnsToStart) {
     EXPECT_EQ(outcome.resume_frequency_khz, 90000u);
     // Full circle: visited every channel once.
     EXPECT_EQ(e.tuned.size(), 205u);
+}
+
+TEST(StepScanTest, ScanMergesAdjacentChannelsToLocalPeak) {
+    FakeEnv e;
+    // One real station bleeding onto neighbors: only the peak lists.
+    e.graded = {{99500, -90}, {99600, -60}, {99700, -70}, {99800, -90}};
+    ScanResultCollector collector;
+    StepScanConfig config = make_config();
+    config.lower_khz = 99400;
+    config.upper_khz = 99900;
+
+    const StepScanOutcome outcome = step_scan_run(StepScanMode::kFullScan, config, make_env(&e), &collector);
+
+    EXPECT_EQ(outcome.status, StepScanStatus::kCompleted);
+    ScanResult result;
+    collector.copy_sorted(&result);
+    ASSERT_EQ(result.count, 1);
+    EXPECT_EQ(result.frequencies_khz[0], 99600);
+}
+
+TEST(StepScanTest, ScanPlateauListsOnce) {
+    FakeEnv e;
+    e.graded = {{99600, -60}, {99700, -60}};
+    ScanResultCollector collector;
+    StepScanConfig config = make_config();
+    config.lower_khz = 99500;
+    config.upper_khz = 99800;
+
+    step_scan_run(StepScanMode::kFullScan, config, make_env(&e), &collector);
+
+    ScanResult result;
+    collector.copy_sorted(&result);
+    EXPECT_EQ(result.count, 1);  // a flat plateau yields its rightmost channel
 }
 
 TEST(StepScanTest, SeekHonorsCancel) {

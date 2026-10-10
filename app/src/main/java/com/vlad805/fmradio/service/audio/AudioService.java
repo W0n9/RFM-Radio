@@ -53,6 +53,15 @@ public abstract class AudioService {
 	 * @return Initialized recorder, or null when the device or construction fails
 	 */
 	protected AudioRecord createFmTunerRecorder(final int sampleRate, final int bufferSizeBytes) {
+		return createFmTunerRecorder(MediaRecorder.AudioSource.DEFAULT, sampleRate, bufferSizeBytes);
+	}
+
+	/**
+	 * Creates an AudioRecord with the given source bound to the FM tuner input device.
+	 *
+	 * @return Initialized recorder, or null when the device or construction fails
+	 */
+	protected AudioRecord createFmTunerRecorder(final int audioSource, final int sampleRate, final int bufferSizeBytes) {
 		final AudioDeviceInfo fmTuner = findFmTunerInputDevice();
 		if (fmTuner == null) {
 			return null;
@@ -64,7 +73,7 @@ public abstract class AudioService {
 					.setChannelMask(AudioFormat.CHANNEL_IN_STEREO)
 					.build();
 			final AudioRecord recorder = new AudioRecord.Builder()
-					.setAudioSource(MediaRecorder.AudioSource.DEFAULT)
+					.setAudioSource(audioSource)
 					.setAudioFormat(format)
 					.setBufferSizeInBytes(bufferSizeBytes)
 					.build();

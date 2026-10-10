@@ -449,12 +449,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private boolean needsPlaybackPermissionForSoftwareAudio() {
-        // Software-bridge drivers capture PCM for playback itself, so they
-        // need RECORD_AUDIO even before any recording happens: legacy on
-        // Android 7-, MTK on every API level.
-        if (TunerDriverDetector.getTunerDriver() == TunerDriver.MTK) {
-            return true;
-        }
+        // Only legacy (Android 7-) bridges PCM in app space and therefore
+        // needs RECORD_AUDIO for playback. MTK plays through the hostless HAL
+        // loopback; Qualcomm routes in hardware.
         return (
             Build.VERSION.SDK_INT < Build.VERSION_CODES.O &&
             TunerDriverDetector.getTunerDriver() == TunerDriver.LEGACY

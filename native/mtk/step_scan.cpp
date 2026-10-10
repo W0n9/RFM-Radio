@@ -26,6 +26,16 @@ StepScanOutcome run_scan(const StepScanConfig &config, const StepScanEnv &env, S
     StepScanOutcome outcome;
     outcome.resume_frequency_khz = config.start_khz;
 
+    // One real station bleeds onto adjacent channels; keep only local maxima
+    // (a channel stronger than both neighbors) so one station lists once.
+    // Evaluated with one step of lag: the previous channel is judged once the
+    // current one is known. Failed probes count as -inf but keep the chain.
+    constexpr int32_t kNoSignal = INT32_MIN;
+    bool have_prev = false;
+    uint32_t prev_freq = 0;
+    int32_t prev_rssi = kNoSignal;
+    int32_t prev2_rssi = kNoSignal;
+
     for (uint32_t freq = config.lower_khz; freq <= config.upper_khz; freq += config.step_khz) {
         if (scan_cancelled(env)) {
             outcome.status = StepScanStatus::kCancelled;
@@ -36,10 +46,27 @@ StepScanOutcome run_scan(const StepScanConfig &config, const StepScanEnv &env, S
             return outcome;
         }
 
-        int32_t rssi_dbm = 0;
-        if (probe(freq, config, env, &rssi_dbm) && rssi_dbm >= config.threshold_dbm) {
-            collector->add(static_cast<int>(freq));
+        int32_t rssi_dbm = kNoSignal;
+        if (!probe(freq, config, env, &rssi_dbm)) {
+            rssi_dbm = kNoSignal;
         }
+
+        if (have_prev
+                && prev_rssi >= config.threshold_dbm
+                && prev_rssi >= prev2_rssi
+                && prev_rssi > rssi_dbm) {
+            collector->add(static_cast<int>(prev_freq));
+        }
+
+        prev2_rssi = prev_rssi;
+        prev_rssi = rssi_dbm;
+        prev_freq = freq;
+        have_prev = true;
+    }
+
+    // Judge the final channel against a virtual right neighbor at -inf.
+    if (have_prev && prev_rssi >= config.threshold_dbm && prev_rssi >= prev2_rssi) {
+        collector->add(static_cast<int>(prev_freq));
     }
 
     outcome.status = StepScanStatus::kCompleted;

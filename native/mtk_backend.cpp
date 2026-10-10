@@ -46,10 +46,11 @@ constexpr const char *kErrFailed = "ERR_FAILED";
 constexpr const char *kErrInvalidAntenna = "ERR_UNV_ANT";
 constexpr uint64_t kMetricSettleMs = 300;
 constexpr int kRdsIdlePollMs = 500;
-// Step-scan parameters. The threshold is a first guess pending on-device
-// calibration against the stock app (ticket 04 acceptance).
+// Step-scan parameters. Threshold calibrated on cannon against the stock
+// app's results: audible stations land at -74..-88 dBm, noise/interference
+// haze starts at -90 dBm.
 constexpr uint32_t kScanSettleMs = 60;
-constexpr int32_t kScanThresholdDbm = -74;
+constexpr int32_t kScanThresholdDbm = -88;
 constexpr uint32_t kScanDeadlinePerStepMs = 200;
 constexpr uint64_t kSeekDeadlineMs = 60000;
 
@@ -325,8 +326,17 @@ public:
 
         int32_t rssi = 0;
         if (!mtk_get_rssi(fd_, &rssi)) {
+            // A connsys restart (e.g. airplane mode) kills the chip under us;
+            // degrade to disabled instead of spinning on a dead fd. Transient
+            // failures just skip this round.
+            if (++consecutive_ioctl_failures_ >= 3) {
+                mtk_log("event", "ioctl failures=%d, degrading to disabled", consecutive_ioctl_failures_);
+                consecutive_ioctl_failures_ = 0;
+                disable();
+            }
             return false;
         }
+        consecutive_ioctl_failures_ = 0;
 
         radio_state_patch_t patch = radio_state_patch_empty();
         patch.rmssi = rssi;
@@ -505,6 +515,7 @@ private:
     }
 
     bool scan_tune(uint32_t frequency_khz) {
+        scan_step_khz_ = frequency_khz;
         fm_tune_parm parm = mtk_make_tune_parm(
                 static_cast<uint8_t>(profile_->mtk_band),
                 spacing_khz_,
@@ -576,7 +587,7 @@ private:
         MtkBackend *self = static_cast<MtkBackend *>(ctx);
         const bool ok = mtk_get_rssi(self->fd_, out);
         if (ok) {
-            mtk_log("scan", "step rssi_dbm=%d", *out);
+            mtk_log("scan", "step frequency_khz=%u rssi_dbm=%d", self->scan_step_khz_, *out);
         }
         return ok;
     }
@@ -691,6 +702,8 @@ private:
     bool scan_thread_joinable_ = false;
     StepScanMode scan_mode_ = StepScanMode::kFullScan;
     ScanResultCollector scan_collector_;
+    uint32_t scan_step_khz_ = 0;
+    int consecutive_ioctl_failures_ = 0;
 };
 
 }  // namespace

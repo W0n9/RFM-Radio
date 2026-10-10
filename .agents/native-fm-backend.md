@@ -569,6 +569,74 @@ Slimbus off then on for HAL devices. Native code does not configure the wider
 Android AudioPolicy/AudioManager route. `kV4l2CtrlAudioPath` exists but is not
 currently used.
 
+## MTK Backend (`/dev/fm`)
+
+Verified on Redmi Note 9 5G (cannon, MT6853 + MT6631 combo, Android 12 MIUI).
+See `.agents/mtk-fm-port-research.md` for the full evidence trail.
+
+### Driver Interface
+
+The `fmradio_drv_mt6631_6635` kernel module exposes a single char device
+`/dev/fm`, ioctl magic `0xf5`. All constants live in `native/mtk/mtk_ioctl.h`
+and are verified by disassembly plus live smoke tests; `fm_tune_parm` is
+`{u8 err; u8 band; u8 space; u8 hilo; u8 deemphasis; u16 freq}` (8 bytes),
+frequency in 10 kHz units. Band: 1=UE 87.5-108 / 2=JP 76-90 / 3=JPW 76-108;
+space: 1/2/5 = 100/200/50 kHz. Driver deemphasis is inverted relative to
+`RegionProfile.emphasis` (0=50us, 1=75us) — `mtk_params.cpp` owns the
+inversion.
+
+There is **no hardware seek/scan**: `FM_IOCTL_SEEK`/`SCAN` return -1 on this
+driver. Both are implemented in userspace by stepping TUNE + GETRSSI across
+the grid (`mtk/step_scan.*`, host-tested with injected callbacks). Station
+detection uses a threshold (calibrated on cannon to -88 dBm: audible stations
+land at -74..-88, interference haze starts at -90) plus a local-maximum rule
+so one bleeding station lists once. Scans carry a deadline, unlike both
+Qualcomm backends.
+
+GETRSSI returns a dBm-like signed value directly (no Qualcomm byte decode).
+`GETMONOSTERO` is the *setting* readback, not reception state; stereo
+indication comes from the RDS flag byte instead.
+
+### RDS
+
+The kernel parses RDS in-driver and delivers whole 688-byte `rds_t` packets
+through `read()`. `fm_rds_read` never blocks (the event wait is commented out
+upstream); a bare 0 return means "no data". The reader thread therefore polls
+with sliced sleeps and can always be stopped. PI/PTY/PS/RT/AF and the stereo
+flag come from fixed offsets (`mtk/rds_packet.h`); ECC is present (offset
+244), so country is emitted on MTK while legacy cannot. Country decode keeps
+the last PI/ECC across packets.
+
+### Threading
+
+- The command thread owns the fd: only it opens/closes.
+- The RDS reader only read()s; the scan worker only ioctl()s; both are
+  provably stopped before close (never detached; the previous scan worker is
+  reaped before a new one starts).
+- `state_lock_` guards the shared station context (current frequency, RMSSI
+  settle deadline, last PI/ECC, PI text).
+
+### Audio
+
+FM audio is a hostless HAL loopback: a patch with no threads routes the
+tuner to the current output entirely inside the audio HAL. App-space PCM
+capture returns zeros in every AudioRecord configuration tried (the stock
+FM service shows the same), so there is no PCM bridge and no recording on
+this ROM. `MtkAudioService` only takes audio focus; routing to speaker goes
+through `AudioManager.setSpeakerphoneOn` + `AudioSystem.setForceUse`
+(via the existing `Audio` helper), matching MIUI's FM service. fmbin never
+touches audio routing.
+
+### Environment notes (cannon-specific)
+
+- The device runs a GhostLock/KernelSU-style root: `su` is invisible to
+  non-granted apps (grant in the manager first), and one transient
+  uid0+capable EACCES episode on `/dev/fm` was observed once and never
+  reproduced. SELinux is permissive on this unit; fmbin runs in the
+  `untrusted_app` domain with denials logged-but-allowed.
+- MIUI's own FM service polls `FMR_read_rds_data` at ~500 ms and gets -1013
+  when idle — matching the driver's no-data-returns-0 semantics.
+
 ## Legacy V4L2 Backend
 
 ### Initialization and Open
