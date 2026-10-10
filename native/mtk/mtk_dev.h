@@ -23,6 +23,7 @@ bool mtk_set_mute(int fd, bool mute);
 // stereo_auto=true -> auto stereo; false -> force mono.
 bool mtk_set_stereo_auto(int fd, bool stereo_auto);
 bool mtk_set_antenna(int fd, int32_t antenna);
+bool mtk_rds_onoff(int fd, bool on);
 
 bool mtk_get_chip_id(int fd, uint16_t *chip_id);
 bool mtk_rds_support(int fd, int32_t *support);

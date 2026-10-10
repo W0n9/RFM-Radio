@@ -33,6 +33,8 @@ if(RFM_NATIVE_TESTS)
         tests/startup_config_test.cpp
         tests/region_profile_test.cpp
         tests/mtk_params_test.cpp
+        tests/mtk_rds_packet_test.cpp
+        tests/mtk_step_scan_test.cpp
         tests/scan_result_test.cpp
         tests/legacy_scan_state_test.cpp
         tests/rmssi_test.cpp
@@ -42,6 +44,8 @@ if(RFM_NATIVE_TESTS)
         startup_config.cpp
         region_profile.cpp
         mtk/mtk_params.cpp
+        mtk/rds_packet.cpp
+        mtk/step_scan.cpp
         scan_result.cpp
         legacy/scan_state.cpp
         periodic_deadline.cpp
@@ -68,6 +72,8 @@ add_executable(
     mtk_backend.cpp
     mtk/mtk_dev.cpp
     mtk/mtk_params.cpp
+    mtk/rds_packet.cpp
+    mtk/step_scan.cpp
     hal_backend.cpp
     hal/fm2_backend.cpp
     hal/utils.cpp

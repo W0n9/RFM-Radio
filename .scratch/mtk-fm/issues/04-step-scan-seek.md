@@ -4,7 +4,7 @@
 
 **Blocked by:** 01(MTK 后端骨架与最小调台通路)
 
-**Status:** ready-for-agent
+**Status:** implemented — 主机测试绿;阈值校准与对拍待真机验证
 
 - [ ] jump 按当前步进移动并在区域边界回绕,响应带回新频率
 - [ ] seek 双向:找到下一个超阈值台即停并更新 UI;到带边回绕一次;整圈无台回到起始频率

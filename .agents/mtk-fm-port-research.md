@@ -321,7 +321,7 @@ FM 扬声器输出有策略限制（耳机即天线）；具体执行位置未�
 | 554 | u16 `event_status`（位定义见 1.4） |
 | 556 | `rds_group_cnt_t gc`（132B：各 group 计数） |
 
-PS 取自 `PS_Data.PS[0..3]`（8 字节轮转窗口，Addr_Cnt 指示最新）；RT 取
+PS 取自 `PS_Data.PS[0]`——内核解析器(`[KSRC] core/fm_rds_parser.c:1331,1336`)始终把当前台名累积进窗口 0,PS[1]/PS[2] 是比对草稿,`Addr_Cnt` 是收齐位图(0xF=4 段全),不是"最新窗口索引"(本节早前描述有误,已据内核源码更正);RT 取
 `RT_Data.TextData`（TextLength/isTypeA）；AF 列表频率为 100kHz 单位。
 **ECC 直接可得**（偏移 244）——比高通 legacy 后端（HCI 丢 ECC）幸运。
 `event_status` 的 `RDS_EVENT_AF`(0x0080) 语义是"当前台信号弱，建议 AF 切换"。

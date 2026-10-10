@@ -22,7 +22,10 @@ bool mtk_ioctl(int fd, unsigned long request, void *arg, const char *what) {
 }  // namespace
 
 int mtk_dev_open() {
-    const int fd = open("/dev/fm", O_RDWR);
+    // O_NONBLOCK is defense in depth: the verified driver never blocks reads,
+    // but if a variant ever does, disable() must still be able to stop the
+    // RDS reader thread.
+    const int fd = open("/dev/fm", O_RDWR | O_NONBLOCK);
     if (fd < 0) {
         const int saved = errno;
         mtk_log("dev", "open /dev/fm fail errno=%d", saved);
@@ -81,6 +84,11 @@ bool mtk_set_stereo_auto(int fd, bool stereo_auto) {
 
 bool mtk_set_antenna(int fd, int32_t antenna) {
     return mtk_ioctl(fd, MTK_IOCTL_ANA_SWITCH, &antenna, "set_antenna");
+}
+
+bool mtk_rds_onoff(int fd, bool on) {
+    uint16_t arg = on ? 1 : 0;
+    return mtk_ioctl(fd, MTK_IOCTL_RDS_ONOFF, &arg, "rds_onoff");
 }
 
 bool mtk_get_chip_id(int fd, uint16_t *chip_id) {
