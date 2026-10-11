@@ -3,7 +3,7 @@
 #
 # 断言用户的两个原始症状（不是代理指标的代理）：
 #   A. 勾选后 FM 声音应走扬声器：audio policy 里 FM_TUNER 源的 patch，sink 必须是
-#      AUDIO_DEVICE_OUT_SPEAKER；反选后 sink 回到 AUDIO_DEVICE_OUT_WIRED_HEADPHONE。
+#      AUDIO_DEVICE_OUT_SPEAKER；反选后 sink 回到 WIRED_HEADPHONE/HEADSET（物理耳机是 HEADSET）。
 #      （与 MIUI 自带 FM 的通路同构：FmService 建 fm_tuner->device patch，HAL 据此
 #       setFmEnable(output_device) 并打开 Hostless_FM。）
 #   B. 菜单 CheckBox 两次点击后应回到未勾选。
@@ -28,7 +28,7 @@ plug_headphone() {
 
 headphone_available() {
   sh_ dumpsys media.audio_policy | sed -n '/Available output devices/,/Available input devices/p' \
-    | grep -q "AUDIO_DEVICE_OUT_WIRED_HEADPHONE"
+    | grep -q "AUDIO_DEVICE_OUT_WIRED"
 }
 
 # FM_TUNER 源 patch 的 sink 列表（逗号分隔），无 patch 输出 none
@@ -104,12 +104,12 @@ headphone_available || { plug_headphone; sleep 2; }
 headphone_available || { echo "PRECONDITION: 耳机注入后 audio policy 仍无 WIRED_HEADPHONE"; exit 2; }
 
 fails=0
-check() { # name expected actual
-  if [ "$2" = "$3" ]; then echo "  ok   $1 = $3"; else echo "  FAIL $1 = $3 (expected $2)"; fails=$((fails + 1)); fi
+check() { # name expected(支持 glob) actual
+  if [[ "$3" == $2 ]]; then echo "  ok   $1 = $3"; else echo "  FAIL $1 = $3 (expected $2)"; fails=$((fails + 1)); fi
 }
 
 # 勾选状态 -> 期望的 FM sink
-sink_for() { [ "$1" = "true" ] && echo "SPEAKER" || echo "WIRED_HEADPHONE"; }
+sink_for() { [ "$1" = "true" ] && echo "SPEAKER" || echo "WIRED_*"; }
 negate() { [ "$1" = "true" ] && echo "false" || echo "true"; }
 
 find_menu_button || { echo "PRECONDITION: 找不到溢出菜单按钮"; exit 2; }

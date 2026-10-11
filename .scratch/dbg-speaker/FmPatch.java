@@ -33,10 +33,14 @@ public class FmPatch {
         } else if (cmd.equals("release")) {
             releaseFmPatches();
         } else if (cmd.equals("route")) {
-            int sink = args[1].equals("speaker") ? DEVICE_OUT_SPEAKER
-                    : args[1].equals("headset") ? DEVICE_OUT_WIRED_HEADSET : DEVICE_OUT_WIRED_HEADPHONE;
+            int sink = args[1].equals("speaker") ? DEVICE_OUT_SPEAKER : 0;
             releaseFmPatches();
-            createFmPatch(sink);
+            if (sink != 0) {
+                createFmPatch(sink);
+            } else {
+                // "wired"：按当前可用端口选 headphone(0x8)，物理带麦耳机则是 headset(0x4)
+                createFmPatch(findWiredSink());
+            }
             listFmPatches();
             if (args.length > 2) {
                 int hold = Integer.parseInt(args[2]);
@@ -104,6 +108,7 @@ public class FmPatch {
     }
 
     static void createFmPatch(int sinkType) throws Exception {
+        if (sinkType < 0) return;
         Object source = null, sink = null;
         for (Object p : ports()) {
             if (!audioDevicePort.isInstance(p)) continue;
@@ -123,5 +128,20 @@ public class FmPatch {
         Method create = am.getMethod("createAudioPatch", out.getClass(), configs.getClass(), sinks.getClass());
         int rc = (int) create.invoke(null, out, configs, sinks);
         System.out.println("createAudioPatch rc=" + rc + " patch=" + Array.get(out, 0));
+    }
+
+    /** 返回当前存在的有线输出端口类型：headphone 优先，其次带麦 headset。 */
+    static int findWiredSink() throws Exception {
+        boolean hasHeadphone = false, hasHeadset = false;
+        for (Object p : ports()) {
+            if (!audioDevicePort.isInstance(p)) continue;
+            int t = deviceType(p);
+            if (t == DEVICE_OUT_WIRED_HEADPHONE) hasHeadphone = true;
+            if (t == DEVICE_OUT_WIRED_HEADSET) hasHeadset = true;
+        }
+        if (hasHeadphone) return DEVICE_OUT_WIRED_HEADPHONE;
+        if (hasHeadset) return DEVICE_OUT_WIRED_HEADSET;
+        System.out.println("no wired output available");
+        return -1;
     }
 }

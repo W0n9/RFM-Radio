@@ -84,7 +84,7 @@ public final class RootAudioRouter {
 	/**
 	 * Switches the FM tuner loopback to the given output device.
 	 *
-	 * @param device "speaker" | "headphone" | "headset"
+	 * @param device "speaker" | "wired"（自动选择 headphone 或带麦 headset）
 	 * @return true on success
 	 */
 	public static boolean routeFm(final String device) {
