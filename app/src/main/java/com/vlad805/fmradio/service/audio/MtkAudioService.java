@@ -2,7 +2,7 @@ package com.vlad805.fmradio.service.audio;
 
 import android.content.Context;
 
-import com.vlad805.fmradio.helper.Audio;
+import com.vlad805.fmradio.helper.RootAudioRouter;
 
 /**
  * MediaTek FM audio on this HAL generation is a hostless loopback: a patch
@@ -12,9 +12,10 @@ import com.vlad805.fmradio.helper.Audio;
  * so there is no bridge and no recording support — the record action shows
  * the existing "unsupported" toast via the IAudioRecordable absence path.
  *
- * The HAL picks up FM routing from the same calls MIUI's FM service makes:
- * AudioManager.setSpeakerphoneOn + AudioSystem.setForceUse (the latter via
- * the app's existing Audio helper).
+ * Routing to speaker requires root: the framework rejects
+ * AudioSystem.setForceUse and the AudioManager patch APIs from an app
+ * process with MODIFY_AUDIO_ROUTING. The only working channel is running
+ * those calls inside an su-launched app_process (see RootAudioRouter).
  */
 public class MtkAudioService extends AudioService {
 	public MtkAudioService(final Context context) {
@@ -33,7 +34,13 @@ public class MtkAudioService extends AudioService {
 
 	@Override
 	public void setSpeakerEnabled(final boolean enabled) {
-		mAudioManager.setSpeakerphoneOn(enabled);
-		Audio.toggleThroughSpeaker(enabled);
+		// setSpeakerphoneOn is not required for the hostless FM loopback and
+		// only affects the communication device; skip it. The actual routing
+		// change is done via root because MODIFY_AUDIO_ROUTING is denied.
+		if (enabled) {
+			RootAudioRouter.routeFm("speaker");
+		} else {
+			RootAudioRouter.routeFm("headphone");
+		}
 	}
 }

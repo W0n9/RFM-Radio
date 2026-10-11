@@ -83,6 +83,8 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
     private Timer mTimer;
     private boolean mNeedRecreateNotification = true;
     private boolean mRecordingNow = false;
+    /** MTK speaker state tracked locally because Audio.isForceSpeakerNow() is unreliable on Android 12+. */
+    private boolean mMtkSpeakerState = false;
 
     private RadioState mState;
 
@@ -333,13 +335,17 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
             case C.Command.SPEAKER_STATE: {
                 final boolean isSpeaker = isHalDriver()
                         ? mState.isForceSpeaker()
-                        : Audio.isForceSpeakerNow();
+                        : mTunerDriverKind == TunerDriver.MTK
+                                ? mMtkSpeakerState
+                                : Audio.isForceSpeakerNow();
                 mAudioService.setSpeakerEnabled(!isSpeaker);
                 Utils.sendAppBroadcast(this, new Intent(C.Event.CHANGE_SPEAKER_MODE).putExtra(C.Key.IS_SPEAKER, !isSpeaker));
                 if (mTunerDriver instanceof QualcommNative) {
                     ((QualcommNative) mTunerDriver).refreshAudioRoute();
                 }
-                if (!isHalDriver()) {
+                if (mTunerDriverKind == TunerDriver.MTK) {
+                    mMtkSpeakerState = !isSpeaker;
+                } else if (!isHalDriver()) {
                     Audio.toggleThroughSpeaker(!isSpeaker);
                 }
                 break;
