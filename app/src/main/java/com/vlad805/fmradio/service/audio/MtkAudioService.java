@@ -23,18 +23,24 @@ import java.util.concurrent.Executors;
  * off the main thread on a serialized worker.
  */
 public class MtkAudioService extends AudioService {
+	private final Context mContext;
 	private final ExecutorService mRouter = Executors.newSingleThreadExecutor();
 	private volatile boolean mSpeakerEnabled = false;
 
 	public MtkAudioService(final Context context) {
 		super(context);
+		mContext = context;
 	}
 
 	@Override
 	public void startAudio() {
 		requestForFocus(true);
 		// Without an FM patch the hostless loopback is silent on every output.
-		mRouter.execute(() -> RootAudioRouter.routeFm(mSpeakerEnabled ? "speaker" : "wired"));
+		mRouter.execute(() -> {
+			if (RootAudioRouter.ensureDexDeployed(mContext)) {
+				RootAudioRouter.routeFm(mSpeakerEnabled ? "speaker" : "wired");
+			}
+		});
 	}
 
 	@Override

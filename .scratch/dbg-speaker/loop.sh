@@ -2,8 +2,8 @@
 # 反馈回路：耳机插入时 RFM "Play through speaker" 能否把 FM 声音切到扬声器、并能反选。
 #
 # 断言用户的两个原始症状（不是代理指标的代理）：
-#   A. 勾选后 FM 声音应走扬声器：audio policy 里 FM_TUNER 源的 patch，sink 必须是
-#      AUDIO_DEVICE_OUT_SPEAKER；反选后 sink 回到 WIRED_HEADPHONE/HEADSET（物理耳机是 HEADSET）。
+#   A. 勾选后 FM 声音应走扬声器：audio policy 里 FM_TUNER 源的 patch，sink 列表必须以
+#      SPEAKER 开头（双 sink，MIUI 同款）；反选后回到 WIRED_HEADPHONE/HEADSET（物理耳机是 HEADSET）。
 #      （与 MIUI 自带 FM 的通路同构：FmService 建 fm_tuner->device patch，HAL 据此
 #       setFmEnable(output_device) 并打开 Hostless_FM。）
 #   B. 菜单 CheckBox 两次点击后应回到未勾选。
@@ -109,7 +109,7 @@ check() { # name expected(支持 glob) actual
 }
 
 # 勾选状态 -> 期望的 FM sink
-sink_for() { [ "$1" = "true" ] && echo "SPEAKER" || echo "WIRED_*"; }
+sink_for() { [ "$1" = "true" ] && echo "SPEAKER,*" || echo "WIRED_*"; }  # 扬声器模式为 speaker+wired 双 sink（MIUI 同款）
 negate() { [ "$1" = "true" ] && echo "false" || echo "true"; }
 
 find_menu_button || { echo "PRECONDITION: 找不到溢出菜单按钮"; exit 2; }

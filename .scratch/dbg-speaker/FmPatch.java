@@ -33,10 +33,12 @@ public class FmPatch {
         } else if (cmd.equals("release")) {
             releaseFmPatches();
         } else if (cmd.equals("route")) {
-            int sink = args[1].equals("speaker") ? DEVICE_OUT_SPEAKER : 0;
             releaseFmPatches();
-            if (sink != 0) {
-                createFmPatch(sink);
+            if (args[1].equals("speaker")) {
+                // MIUI 做法：fm->speaker+wired 双 sink（"avoid noise"）
+                createFmPatchDual(DEVICE_OUT_SPEAKER, findWiredSink());
+            } else if (args[1].equals("speaker-only")) {
+                createFmPatch(DEVICE_OUT_SPEAKER);
             } else {
                 // "wired"：按当前可用端口选 headphone(0x8)，物理带麦耳机则是 headset(0x4)
                 createFmPatch(findWiredSink());
@@ -143,5 +145,34 @@ public class FmPatch {
         if (hasHeadset) return DEVICE_OUT_WIRED_HEADSET;
         System.out.println("no wired output available");
         return -1;
+    }
+
+    /** MIUI 的扬声器模式：fm_tuner -> [speaker, wired] 双 sink。 */
+    static void createFmPatchDual(int sinkTypeA, int sinkTypeB) throws Exception {
+        Object source = null, sinkA = null, sinkB = null;
+        for (Object p : ports()) {
+            if (!audioDevicePort.isInstance(p)) continue;
+            int t = deviceType(p);
+            if (t == DEVICE_IN_FM_TUNER) source = p;
+            if (t == sinkTypeA) sinkA = p;
+            if (t == sinkTypeB) sinkB = p;
+        }
+        System.out.printf("source=%s sinkA=%s sinkB=%s%n", source, sinkA, sinkB);
+        if (source == null || sinkA == null) return;
+        if (sinkB == null) {  // 没有有线耳机时退化为单 speaker
+            createFmPatch(sinkTypeA);
+            return;
+        }
+
+        Method activeConfig = audioPort.getMethod("activeConfig");
+        Object configs = Array.newInstance(audioPortConfig, 1);
+        Object sinks = Array.newInstance(audioPortConfig, 2);
+        Array.set(configs, 0, activeConfig.invoke(source));
+        Array.set(sinks, 0, activeConfig.invoke(sinkA));
+        Array.set(sinks, 1, activeConfig.invoke(sinkB));
+        Object out = Array.newInstance(audioPatch, 1);
+        Method create = am.getMethod("createAudioPatch", out.getClass(), configs.getClass(), sinks.getClass());
+        int rc = (int) create.invoke(null, out, configs, sinks);
+        System.out.println("createAudioPatch(dual) rc=" + rc + " patch=" + Array.get(out, 0));
     }
 }

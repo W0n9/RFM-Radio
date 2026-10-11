@@ -292,8 +292,12 @@ AudioTrack；native 无需触碰音频路由。** 具体 AudioRecord 的 source/
 （设备枚举 + 何种 source）需设备实测确认（见第 6 节）。
 
 vendor 属性 `ro.vendor.audio.fm.disable.spk=true`（`[ROM]` build.prop）提示 MIUI 对
-FM 扬声器输出有策略限制（耳机即天线）；具体执行位置未在 HAL 字符串中命中，
-**待实测**确认扬声器放音是否需额外处理。
+FM 扬声器输出有策略限制（耳机即天线）；具体执行位置未在 HAL 字符串中命中。
+**实测结论（2026-10-11）**：扬声器放音可行——MIUI FmService 的扬声器模式是创建
+**双 sink patch**（`fm_tuner -> speaker + earphone`，dex 字符串原话
+"create fm->speaker+earphone patch to avoid noise"）；单 speaker sink 的 patch 虽建成功、
+HAL 上电序列完整（speaker_output + ext_speaker_output），但实际无声。双 sink 下 HAL 走
+`headphoneSpeaker_output` 组合设备配置，扬声器可听（用户实测确认）。
 
 ---
 
@@ -367,8 +371,9 @@ core/fm_module.c:1261-1276`）——fd 泄漏约等于关机，仍需显式 POWE
 
 1. `/dev/fm` 在 root shell 下的实际 open/POWERUP/TUNE/GETRSSI 行为与返回码
    （尤其 POWERUP 的耗时与 err 字段语义）。
-2. MIUI app 的 AudioRecord 究竟如何选中 FM Tuner In（source 值/设备绑定方式）；
-   `ro.vendor.audio.fm.disable.spk=true` 下扬声器放音是否可行及所需设置。
+2. ~~MIUI app 的 AudioRecord 究竟如何选中 FM Tuner In（source 值/设备绑定方式）；
+   `ro.vendor.audio.fm.disable.spk=true` 下扬声器放音是否可行及所需设置~~（已实测，
+   见 4.3 节末尾：扬声器可行但需双 sink patch）。
 3. 是否存在 hostless 直通（不经过 app 的 Connsys I2S → ADDA_DL 监听通路）及其
    mixer 控件名（`tinymix` 枚举 "Hostless FM" 相关控件），若有则音频可零拷贝。
 4. RSSI 读数标度与软扫描阈值校准；立体声/单声道事件是否有中断通知（`fm_eint_wq`

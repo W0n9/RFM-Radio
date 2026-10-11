@@ -618,14 +618,38 @@ the last PI/ECC across packets.
 
 ### Audio
 
-FM audio is a hostless HAL loopback: a patch with no threads routes the
-tuner to the current output entirely inside the audio HAL. App-space PCM
+FM audio is a hostless HAL loopback: an audio patch with no threads routes
+the tuner to the output device entirely inside the audio HAL. App-space PCM
 capture returns zeros in every AudioRecord configuration tried (the stock
 FM service shows the same), so there is no PCM bridge and no recording on
-this ROM. `MtkAudioService` only takes audio focus; routing to speaker goes
-through `AudioManager.setSpeakerphoneOn` + `AudioSystem.setForceUse`
-(via the existing `Audio` helper), matching MIUI's FM service. fmbin never
-touches audio routing.
+this ROM. fmbin never touches audio routing.
+
+The loopback only exists while an FM_TUNER patch is present, so
+`MtkAudioService.startAudio()` creates one (`fm_tuner -> wired`) and
+`stopAudio()` releases it, mirroring MIUI's FM service.
+
+Routing is done with root: Android 12 denies `MODIFY_AUDIO_ROUTING` to app
+processes, so `AudioSystem.setForceUse` and `AudioManager.createAudioPatch`
+from the app fail silently (JNI logs "Command failed ... setForceUse: -1").
+`RootAudioRouter` therefore runs the patch calls inside an su-launched
+`app_process` helper (`FmPatch`, bundled as `assets/fmpatch.dex` and deployed
+to `/data/local/tmp/fmpatch.dex` with md5 verification on first use), on a
+serialized background executor — never the UI thread.
+
+Speaker mode ("Play through speaker") must create a **dual-sink** patch
+(`fm_tuner -> speaker + wired`), exactly what MIUI's FmService does
+("create fm->speaker+earphone patch to avoid noise" — speaker-only patches
+stay silent on this HAL even though all turn-on sequences log success).
+The wired sink auto-selects between WIRED_HEADPHONE and WIRED_HEADSET
+(physical headsets with a mic are 0x4, not 0x8).
+
+The speaker checkbox state is tracked in `FMService.mMtkSpeakerState`:
+`Audio.isForceSpeakerNow()` is unusable on Android 12+ (getForceUse is
+equally permission-gated), which previously pinned the checkbox checked.
+
+`ro.vendor.audio.fm.disable.spk=true` ships in this ROM, but speaker output
+verifiably works via the dual-sink patch (user-confirmed audible); the
+property's enforcement point was not found in the HAL.
 
 ### Environment notes (cannon-specific)
 
