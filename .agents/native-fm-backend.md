@@ -651,6 +651,14 @@ equally permission-gated), which previously pinned the checkbox checked.
 verifiably works via the dual-sink patch (user-confirmed audible); the
 property's enforcement point was not found in the HAL.
 
+Speaker-ONLY output (earphone silent) is **impossible on this hardware**:
+the external speaker amp is fed from the headphone output path. Verified on
+device — muting either `Headset_PGAL/R_GAIN` (-40 dB) or `Headset Volume`
+(0) via the MT6359 mixer silences the speaker too. The HAL's only working
+FM→speaker device config is the combined `headphoneSpeaker_output`. MIUI's
+FM UI on this ROM does not expose a speaker toggle at all; the dual-sink
+behavior is the platform ceiling.
+
 ### Environment notes (cannon-specific)
 
 - The device runs a GhostLock/KernelSU-style root: `su` is invisible to

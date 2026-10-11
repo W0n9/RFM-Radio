@@ -32,6 +32,32 @@ public class FmPatch {
             listFmPatches();
         } else if (cmd.equals("release")) {
             releaseFmPatches();
+        } else if (cmd.equals("dumphal")) {
+            // 枚举 primary HAL 模块的 setParameters 方法签名
+            Class<?> as = Class.forName("android.media.AudioSystem");
+            for (Method m : as.getDeclaredMethods()) {
+                if (m.getName().contains("Parameters")) System.out.println(m);
+            }
+        } else if (cmd.equals("dumpmethods")) {
+            Class<?> as = Class.forName("android.media.AudioSystem");
+            for (Method m : as.getDeclaredMethods()) {
+                String n = m.getName();
+                if (n.contains("Volume") || n.contains("volume") || n.contains("ForceUse")) {
+                    System.out.println(m);
+                }
+            }
+        } else if (cmd.equals("vol")) {
+            // vol <stream> <index> <deviceTypeHex> — 按设备单独设置流音量（AudioSystem 隐藏 API）
+            Class<?> as = Class.forName("android.media.AudioSystem");
+            int stream = Integer.parseInt(args[1]);
+            int index = Integer.parseInt(args[2]);
+            int device = Integer.decode(args[3]);
+            Method set = as.getMethod("setStreamVolumeIndexAS", int.class, int.class, int.class);
+            int rc = (int) set.invoke(null, stream, index, device);
+            Method get = as.getMethod("getStreamVolumeIndex", int.class, int.class);
+            Object rb = get.invoke(null, stream, device);
+            Object rbSet = get.invoke(null, stream, Long.decode(args[3]).intValue());
+            System.out.println("setStreamVolumeIndexAS rc=" + rc + " readback(hex)=" + rb + " readback(dec)=" + rbSet);
         } else if (cmd.equals("route")) {
             releaseFmPatches();
             if (args[1].equals("speaker")) {
