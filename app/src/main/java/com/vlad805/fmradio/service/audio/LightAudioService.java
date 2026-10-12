@@ -35,7 +35,11 @@ public class LightAudioService extends AudioService implements IAudioRecordable 
 	private boolean mIsActive = false;
 
 	public LightAudioService(final Context context) {
-		super(context);
+		this(context, 44100);
+	}
+
+	protected LightAudioService(final Context context, final int sampleRate) {
+		super(context, sampleRate);
 		mPreRollEnabled = Storage.getPrefBoolean(
 				context,
 				C.PrefKey.RECORDING_SAVE_PAST,

@@ -16,6 +16,10 @@ public final class TunerDriverDetector {
             return TunerDriver.HAL;
         }
 
+        if (hasDevFm()) {
+            return TunerDriver.MTK;
+        }
+
         return TunerDriver.NONE;
     }
 
@@ -25,6 +29,10 @@ public final class TunerDriverDetector {
 
     public static boolean hasDevRadio0() {
         return new File("/dev/radio0").exists();
+    }
+
+    public static boolean hasDevFm() {
+        return new File("/dev/fm").exists();
     }
 
     private static final String[] FM_HELIUM_PATHS = {

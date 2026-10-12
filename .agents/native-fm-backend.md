@@ -24,12 +24,17 @@ or a device test demonstrate that it can change safely.
 application copies an ABI-specific executable from assets into its private
 files directory, starts it as root, and communicates with it over loopback UDP.
 
-The executable contains two implementations behind the `Backend` interface:
+The executable contains three implementations behind the `Backend` interface:
 
 | Backend | Selection condition | Hardware interface |
 | --- | --- | --- |
 | Legacy | `/dev/radio0` exists | Direct V4L2 and Qualcomm private controls |
 | HAL/FM2 | No `/dev/radio0`, but `fm_helium.so` exists | Dynamically loaded Qualcomm vendor HAL |
+| MTK | Neither above, but `/dev/fm` exists | Direct ioctl to MediaTek `fmradio_drv` (verified on MT6631) |
+
+The MTK backend is landing incrementally; see `.scratch/mtk-fm/spec.md` and
+`.agents/mtk-fm-port-research.md`. This document's MTK chapter is completed by
+that effort's final hardening ticket.
 
 Selection is process-global and lazy. The first command requiring a backend
 calls `create_detected_backend()`, and the selected singleton is retained for
@@ -106,6 +111,16 @@ Android QualcommNative
 | `native/legacy/fmcommon.h` | Legacy constants, state, structs, and event enums |
 | `native/legacy/detector.cpp` | Platform detection through Android properties |
 | `native/legacy/utils.cpp` | Frequency conversion, band limits, filesystem helpers |
+
+### MTK Layer (ticket-staged; see `.scratch/mtk-fm/spec.md`)
+
+| Path | Responsibility |
+| --- | --- |
+| `native/mtk_backend.cpp` | Adapter from `Backend` to MTK driver ioctls |
+| `native/mtk/mtk_ioctl.h` | Verified ioctl numbers, `fm_tune_parm` ABI layout |
+| `native/mtk/mtk_params.*` | Pure mappings (band/spacing/deemphasis/frequency units) |
+| `native/mtk/mtk_dev.*` | fd-scoped ioctl wrappers with errno logging |
+| `native/mtk/mtk_log.h` | `mtk/<scope>` logging |
 
 ### Android Bridge
 
@@ -279,7 +294,7 @@ Common textual errors include:
 | `ERR_UNK_CMD` | Empty or unknown command |
 | `ERR_UNSUPPORTED` | No backend or unsupported device |
 | `ERR_FAILED` | Generic backend operation failure |
-| `ERR_UNV_ANT` | Legacy antenna value rejected |
+| `ERR_UNV_ANT` | Legacy or MTK antenna value rejected |
 | `ERR_CNS_REG` | Legacy region/band could not be set |
 
 `response_t.code` is not transmitted. Only its `data` string is sent over UDP.
@@ -341,7 +356,8 @@ the Java side until a later, different patch is emitted.
 1. Existence of `/dev/radio0` selects legacy.
 2. Existence of `fm_helium.so` in known vendor, system vendor, system_ext, or
    ODM 32/64-bit locations selects HAL.
-3. Otherwise no backend is available.
+3. Existence of `/dev/fm` selects MTK.
+4. Otherwise no backend is available.
 
 Detection tests file existence only. It does not prove that `/dev/radio0` can
 be opened or that the HAL ABI is compatible.
@@ -552,6 +568,106 @@ configuration, and Slimbus control. `QualcommNative.refreshAudioRoute()` toggles
 Slimbus off then on for HAL devices. Native code does not configure the wider
 Android AudioPolicy/AudioManager route. `kV4l2CtrlAudioPath` exists but is not
 currently used.
+
+## MTK Backend (`/dev/fm`)
+
+Verified on Redmi Note 9 5G (cannon, MT6853 + MT6631 combo, Android 12 MIUI).
+See `.agents/mtk-fm-port-research.md` for the full evidence trail.
+
+### Driver Interface
+
+The `fmradio_drv_mt6631_6635` kernel module exposes a single char device
+`/dev/fm`, ioctl magic `0xf5`. All constants live in `native/mtk/mtk_ioctl.h`
+and are verified by disassembly plus live smoke tests; `fm_tune_parm` is
+`{u8 err; u8 band; u8 space; u8 hilo; u8 deemphasis; u16 freq}` (8 bytes),
+frequency in 10 kHz units. Band: 1=UE 87.5-108 / 2=JP 76-90 / 3=JPW 76-108;
+space: 1/2/5 = 100/200/50 kHz. Driver deemphasis is inverted relative to
+`RegionProfile.emphasis` (0=50us, 1=75us) — `mtk_params.cpp` owns the
+inversion.
+
+There is **no hardware seek/scan**: `FM_IOCTL_SEEK`/`SCAN` return -1 on this
+driver. Both are implemented in userspace by stepping TUNE + GETRSSI across
+the grid (`mtk/step_scan.*`, host-tested with injected callbacks). Station
+detection uses a threshold (calibrated on cannon to -88 dBm: audible stations
+land at -74..-88, interference haze starts at -90) plus a local-maximum rule
+so one bleeding station lists once. Scans carry a deadline, unlike both
+Qualcomm backends.
+
+GETRSSI returns a dBm-like signed value directly (no Qualcomm byte decode).
+`GETMONOSTERO` is the *setting* readback, not reception state; stereo
+indication comes from the RDS flag byte instead.
+
+### RDS
+
+The kernel parses RDS in-driver and delivers whole 688-byte `rds_t` packets
+through `read()`. `fm_rds_read` never blocks (the event wait is commented out
+upstream); a bare 0 return means "no data". The reader thread therefore polls
+with sliced sleeps and can always be stopped. PI/PTY/PS/RT/AF and the stereo
+flag come from fixed offsets (`mtk/rds_packet.h`); ECC is present (offset
+244), so country is emitted on MTK while legacy cannot. Country decode keeps
+the last PI/ECC across packets.
+
+### Threading
+
+- The command thread owns the fd: only it opens/closes.
+- The RDS reader only read()s; the scan worker only ioctl()s; both are
+  provably stopped before close (never detached; the previous scan worker is
+  reaped before a new one starts).
+- `state_lock_` guards the shared station context (current frequency, RMSSI
+  settle deadline, last PI/ECC, PI text).
+
+### Audio
+
+FM audio is a hostless HAL loopback: an audio patch with no threads routes
+the tuner to the output device entirely inside the audio HAL. App-space PCM
+capture returns zeros in every AudioRecord configuration tried (the stock
+FM service shows the same), so there is no PCM bridge and no recording on
+this ROM. fmbin never touches audio routing.
+
+The loopback only exists while an FM_TUNER patch is present, so
+`MtkAudioService.startAudio()` creates one (`fm_tuner -> wired`) and
+`stopAudio()` releases it, mirroring MIUI's FM service.
+
+Routing is done with root: Android 12 denies `MODIFY_AUDIO_ROUTING` to app
+processes, so `AudioSystem.setForceUse` and `AudioManager.createAudioPatch`
+from the app fail silently (JNI logs "Command failed ... setForceUse: -1").
+`RootAudioRouter` therefore runs the patch calls inside an su-launched
+`app_process` helper (`FmPatch`, bundled as `assets/fmpatch.dex` and deployed
+to `/data/local/tmp/fmpatch.dex` with md5 verification on first use), on a
+serialized background executor — never the UI thread.
+
+Speaker mode ("Play through speaker") must create a **dual-sink** patch
+(`fm_tuner -> speaker + wired`), exactly what MIUI's FmService does
+("create fm->speaker+earphone patch to avoid noise" — speaker-only patches
+stay silent on this HAL even though all turn-on sequences log success).
+The wired sink auto-selects between WIRED_HEADPHONE and WIRED_HEADSET
+(physical headsets with a mic are 0x4, not 0x8).
+
+The speaker checkbox state is tracked in `FMService.mMtkSpeakerState`:
+`Audio.isForceSpeakerNow()` is unusable on Android 12+ (getForceUse is
+equally permission-gated), which previously pinned the checkbox checked.
+
+`ro.vendor.audio.fm.disable.spk=true` ships in this ROM, but speaker output
+verifiably works via the dual-sink patch (user-confirmed audible); the
+property's enforcement point was not found in the HAL.
+
+Speaker-ONLY output (earphone silent) is **impossible on this hardware**:
+the external speaker amp is fed from the headphone output path. Verified on
+device — muting either `Headset_PGAL/R_GAIN` (-40 dB) or `Headset Volume`
+(0) via the MT6359 mixer silences the speaker too. The HAL's only working
+FM→speaker device config is the combined `headphoneSpeaker_output`. MIUI's
+FM UI on this ROM does not expose a speaker toggle at all; the dual-sink
+behavior is the platform ceiling.
+
+### Environment notes (cannon-specific)
+
+- The device runs a GhostLock/KernelSU-style root: `su` is invisible to
+  non-granted apps (grant in the manager first), and one transient
+  uid0+capable EACCES episode on `/dev/fm` was observed once and never
+  reproduced. SELinux is permissive on this unit; fmbin runs in the
+  `untrusted_app` domain with denials logged-but-allowed.
+- MIUI's own FM service polls `FMR_read_rds_data` at ~500 ms and gets -1013
+  when idle — matching the driver's no-data-returns-0 semantics.
 
 ## Legacy V4L2 Backend
 
@@ -775,6 +891,7 @@ Host-side GoogleTest is enabled with `RFM_NATIVE_TESTS=ON`. Current tests cover:
 - frequency-list formatting
 - shared sequential-scan result collection
 - legacy sequential-scan state transitions
+- MTK parameter mappings and driver ABI layout
 
 Current host tests do not cover:
 

@@ -11,6 +11,7 @@ constexpr RegionProfile kEuropeProfile = {
         .rds_standard = kFmRdsStandardRds,
         .legacy_band = 1,
         .helium_region = 1,
+        .mtk_band = 1,
 };
 
 constexpr RegionProfile kUnitedStatesProfile = {
@@ -20,6 +21,7 @@ constexpr RegionProfile kUnitedStatesProfile = {
         .rds_standard = kFmRdsStandardRbds,
         .legacy_band = 1,
         .helium_region = 0,
+        .mtk_band = 1,
 };
 
 constexpr RegionProfile kJapanProfile = {
@@ -29,6 +31,10 @@ constexpr RegionProfile kJapanProfile = {
         .rds_standard = kFmRdsStandardRds,
         .legacy_band = 2,
         .helium_region = 2,
+        // Driver band 2 spans only 76-90MHz while this region reaches 95MHz;
+        // band 3 (76-108) covers the whole region, so tuning can never be
+        // rejected for being out of band.
+        .mtk_band = 3,
 };
 
 constexpr RegionProfile kJapanWideProfile = {
@@ -38,6 +44,7 @@ constexpr RegionProfile kJapanWideProfile = {
         .rds_standard = kFmRdsStandardRds,
         .legacy_band = 3,
         .helium_region = 3,
+        .mtk_band = 3,
 };
 
 }  // namespace

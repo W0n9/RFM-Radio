@@ -17,6 +17,7 @@ struct RegionProfile {
     int rds_standard;
     int legacy_band;
     int helium_region;
+    int mtk_band;
 };
 
 const RegionProfile &get_region_profile(StartupRegion region);

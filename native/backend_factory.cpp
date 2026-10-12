@@ -4,6 +4,7 @@
 
 Backend *create_legacy_backend();
 Backend *create_hal_backend();
+Backend *create_mtk_backend();
 
 namespace {
 
@@ -22,6 +23,10 @@ constexpr const char *kFmHeliumPaths[] = {
 
 bool has_dev_radio0() {
     return access("/dev/radio0", F_OK) == 0;
+}
+
+bool has_dev_fm() {
+    return access("/dev/fm", F_OK) == 0;
 }
 
 bool has_helium() {
@@ -43,6 +48,10 @@ BackendKind detect_backend_kind() {
         return BackendKind::kHal;
     }
 
+    if (has_dev_fm()) {
+        return BackendKind::kMtk;
+    }
+
     return BackendKind::kNone;
 }
 
@@ -54,6 +63,10 @@ Backend *create_backend(const BackendKind kind) {
 
         case BackendKind::kHal: {
             return create_hal_backend();
+        }
+
+        case BackendKind::kMtk: {
+            return create_mtk_backend();
         }
 
         case BackendKind::kNone:

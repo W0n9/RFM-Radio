@@ -32,6 +32,7 @@ import com.vlad805.fmradio.helper.TunerDriverDetector;
 import com.vlad805.fmradio.models.FavoriteStation;
 import com.vlad805.fmradio.service.audio.AudioService;
 import com.vlad805.fmradio.service.audio.LightAudioService;
+import com.vlad805.fmradio.service.audio.MtkAudioService;
 import com.vlad805.fmradio.service.audio.RoutingAudioService;
 import com.vlad805.fmradio.service.fm.FMEventCallback;
 import com.vlad805.fmradio.service.fm.IFMController;
@@ -82,6 +83,8 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
     private Timer mTimer;
     private boolean mNeedRecreateNotification = true;
     private boolean mRecordingNow = false;
+    /** MTK speaker state tracked locally because Audio.isForceSpeakerNow() is unreliable on Android 12+. */
+    private boolean mMtkSpeakerState = false;
 
     private RadioState mState;
 
@@ -332,13 +335,17 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
             case C.Command.SPEAKER_STATE: {
                 final boolean isSpeaker = isHalDriver()
                         ? mState.isForceSpeaker()
-                        : Audio.isForceSpeakerNow();
+                        : mTunerDriverKind == TunerDriver.MTK
+                                ? mMtkSpeakerState
+                                : Audio.isForceSpeakerNow();
                 mAudioService.setSpeakerEnabled(!isSpeaker);
                 Utils.sendAppBroadcast(this, new Intent(C.Event.CHANGE_SPEAKER_MODE).putExtra(C.Key.IS_SPEAKER, !isSpeaker));
                 if (mTunerDriver instanceof QualcommNative) {
                     ((QualcommNative) mTunerDriver).refreshAudioRoute();
                 }
-                if (!isHalDriver()) {
+                if (mTunerDriverKind == TunerDriver.MTK) {
+                    mMtkSpeakerState = !isSpeaker;
+                } else if (!isHalDriver()) {
                     Audio.toggleThroughSpeaker(!isSpeaker);
                 }
                 break;
@@ -398,6 +405,11 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
      * @return FMAudioService instance
      */
     private AudioService getAudioService() {
+        if (mTunerDriverKind == TunerDriver.MTK) {
+            // MTK delivers FM audio as PCM via the audio HAL; no hardware loopback.
+            return new MtkAudioService(this);
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // Android 8+
             return new RoutingAudioService(this);
@@ -416,7 +428,8 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
 
         switch (mTunerDriverKind) {
             case HAL:
-            case LEGACY: {
+            case LEGACY:
+            case MTK: {
                 return new QualcommNative(this, mTunerDriverKind);
             }
 

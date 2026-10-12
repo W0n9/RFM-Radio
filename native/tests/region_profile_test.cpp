@@ -13,6 +13,7 @@ TEST(RegionProfileTest, DefinesEuropeProfile) {
     EXPECT_EQ(profile.rds_standard, kFmRdsStandardRds);
     EXPECT_EQ(profile.legacy_band, 1);
     EXPECT_EQ(profile.helium_region, 1);
+    EXPECT_EQ(profile.mtk_band, 1);
 }
 
 TEST(RegionProfileTest, DefinesUnitedStatesProfile) {
@@ -24,6 +25,7 @@ TEST(RegionProfileTest, DefinesUnitedStatesProfile) {
     EXPECT_EQ(profile.rds_standard, kFmRdsStandardRbds);
     EXPECT_EQ(profile.legacy_band, 1);
     EXPECT_EQ(profile.helium_region, 0);
+    EXPECT_EQ(profile.mtk_band, 1);
 }
 
 TEST(RegionProfileTest, DefinesJapanProfile) {
@@ -35,6 +37,7 @@ TEST(RegionProfileTest, DefinesJapanProfile) {
     EXPECT_EQ(profile.rds_standard, kFmRdsStandardRds);
     EXPECT_EQ(profile.legacy_band, 2);
     EXPECT_EQ(profile.helium_region, 2);
+    EXPECT_EQ(profile.mtk_band, 3);  // band 2 (76-90MHz) cannot cover jp's 95MHz upper bound
 }
 
 TEST(RegionProfileTest, DefinesJapanWideProfile) {
@@ -46,6 +49,7 @@ TEST(RegionProfileTest, DefinesJapanWideProfile) {
     EXPECT_EQ(profile.rds_standard, kFmRdsStandardRds);
     EXPECT_EQ(profile.legacy_band, 3);
     EXPECT_EQ(profile.helium_region, 3);
+    EXPECT_EQ(profile.mtk_band, 3);
 }
 
 TEST(RegionProfileTest, ReturnsProtocolNames) {
