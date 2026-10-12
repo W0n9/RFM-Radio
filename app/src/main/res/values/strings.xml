@@ -12,6 +12,9 @@
 	<string name="menu_more">More options</string>
 	<string name="settings_cd">Settings</string>
 	<string name="frequency_slider_cd">Frequency slider</string>
+	<string name="favorite_add_cd">Add current station to favorites</string>
+	<string name="favorite_lists_entry">Lists</string>
+	<string name="popup_station_reorder">Reorder</string>
 	<string name="jump_up">Jump up</string>
 	<string name="seek_up">Seek up</string>
 	<string name="jump_down">Jump down</string>

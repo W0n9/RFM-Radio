@@ -324,15 +324,20 @@
 		</LinearLayout>
 	</LinearLayout>
 
-	<!-- ===================== Favorites (interim: old grid; chips land in the next step) ===================== -->
-	<com.vlad805.fmradio.view.FavoritesView
+	<!-- ===================== Favorites: horizontal chips ===================== -->
+	<com.vlad805.fmradio.view.FavoriteChipsView
 			android:id="@+id/favorite_list"
 			android:layout_width="0dp"
-			android:layout_height="0dp"
+			android:layout_height="wrap_content"
 			android:layout_marginTop="8dp"
+			android:paddingStart="22dp"
+			android:paddingTop="6dp"
+			android:paddingEnd="22dp"
+			android:paddingBottom="16dp"
 			app:layout_constraintBottom_toBottomOf="parent"
 			app:layout_constraintEnd_toEndOf="parent"
 			app:layout_constraintStart_toStartOf="parent"
-			app:layout_constraintTop_toBottomOf="@id/slider_zone" />
+			app:layout_constraintTop_toBottomOf="@id/slider_zone"
+			app:layout_constraintVertical_bias="1" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

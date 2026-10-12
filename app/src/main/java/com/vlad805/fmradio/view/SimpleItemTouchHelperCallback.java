@@ -42,6 +42,9 @@ public class SimpleItemTouchHelperCallback extends ItemTouchHelper.Callback {
 		int dragFlags;
 		if (recyclerView.getLayoutManager() instanceof GridLayoutManager) {
 			dragFlags = ItemTouchHelper.UP | ItemTouchHelper.DOWN | ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT;
+		} else if (recyclerView.getLayoutManager() instanceof androidx.recyclerview.widget.LinearLayoutManager
+				&& ((androidx.recyclerview.widget.LinearLayoutManager) recyclerView.getLayoutManager()).getOrientation() == androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL) {
+			dragFlags = ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT;
 		} else {
 			dragFlags = ItemTouchHelper.UP | ItemTouchHelper.DOWN;
 		}

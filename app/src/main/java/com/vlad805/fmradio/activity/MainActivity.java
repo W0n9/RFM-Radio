@@ -46,7 +46,7 @@ import com.vlad805.fmradio.models.FavoriteStation;
 import com.vlad805.fmradio.preferences.BandUtils;
 import com.vlad805.fmradio.service.FMService;
 import com.vlad805.fmradio.view.BlobView;
-import com.vlad805.fmradio.view.FavoritesView;
+import com.vlad805.fmradio.view.FavoriteChipsView;
 import com.vlad805.fmradio.view.FrequencySliderView;
 import com.vlad805.fmradio.view.RecordCapsuleView;
 import com.vlad805.fmradio.view.SignalStrengthView;
@@ -64,7 +64,7 @@ import static com.vlad805.fmradio.Utils.getTimeStringBySeconds;
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, RadioStateUpdater.TunerStateListener {
     private Toast mToast;
     private FrequencySliderView mSlider;
-    private FavoritesView mFavoritesView;
+    private FavoriteChipsView mFavoritesView;
     private BlobView mBlob;
     private RecordCapsuleView mRecCapsule;
 
@@ -167,11 +167,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mRt.setSelected(true);
 
         mFavoritesView = findViewById(R.id.favorite_list);
+        mFavoritesView.setControllers(mFavoriteController, mRadioController);
         mFavoritesView.setOnFavoritesChangedListener(() -> {
             updateFavoriteFrequencyMarkers();
         });
-        mFavoritesView.setOnErrorListener(message -> {
-            mToast.text(message).show();
+        mFavoritesView.setOnListsClickListener(() -> {
+            startActivityForResult(new Intent(this, FavoriteListsActivity.class), REQUEST_CODE_FAVORITES_OPENED);
         });
 
         mSlider = findViewById(R.id.frequency_slider);
