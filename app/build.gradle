@@ -24,6 +24,10 @@ def hasReleaseSigning =
         isNonEmpty(releaseKeyAlias) &&
         isNonEmpty(releaseKeyPassword)
 
+if (!hasReleaseSigning) {
+    logger.lifecycle("No release keystore configured; release builds will be signed with the debug key")
+}
+
 android {
     compileSdk = 36
     namespace = "com.vlad805.fmradio"
@@ -40,6 +44,15 @@ android {
         ndk {
             //noinspection ChromeOsAbiSupport
             abiFilters "armeabi-v7a", "arm64-v8a"
+        }
+    }
+
+    splits {
+        abi {
+            enable true
+            reset()
+            include "armeabi-v7a", "arm64-v8a"
+            universalApk true
         }
     }
 
@@ -62,9 +75,12 @@ android {
         release {
             minifyEnabled = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            if (hasReleaseSigning) {
-                signingConfig signingConfigs.release
-            }
+            // With no release keystore configured (a fork without secrets) an unsigned APK is
+            // produced, which cannot be installed at all. Fall back to the debug key so the build
+            // stays usable. Upstream supplies the secrets and keeps using the release key.
+            signingConfig hasReleaseSigning
+                    ? signingConfigs.release
+                    : signingConfigs.getByName("debug")
         }
     }
 
@@ -100,7 +116,11 @@ android {
 androidComponents {
     onVariants(selector().all()) { variant ->
         variant.outputs.each { output ->
-            output.outputFileName.set("${variant.applicationId.get()}-${appVersionName}.apk")
+            // With ABI splits enabled every output would otherwise claim the same file name and
+            // the splits would overwrite each other.
+            def abi = output.filters.find { it.filterType.name() == "ABI" }?.identifier
+            def abiSuffix = abi == null ? "universal" : (abi == "armeabi-v7a" ? "arm" : "arm64")
+            output.outputFileName.set("${variant.applicationId.get()}-${appVersionName}-${abiSuffix}.apk")
         }
     }
 }
