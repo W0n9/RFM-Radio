@@ -1,7 +1,6 @@
 package com.vlad805.fmradio.controller;
 
 import android.content.Context;
-import android.os.Environment;
 import com.vlad805.fmradio.Storage;
 import com.vlad805.fmradio.helper.json.JSONFile;
 import com.vlad805.fmradio.models.FavoriteFile;
@@ -43,7 +42,6 @@ public class FavoriteController extends JSONFile<FavoriteFile> {
 	public FavoriteController(final Context context) {
 		super(context);
 		this.mStorage = Storage.getInstance(context);
-		migrateLegacyFavorites();
 	}
 
 	/**
@@ -348,39 +346,6 @@ public class FavoriteController extends JSONFile<FavoriteFile> {
 			writeFile(str);
 		} catch (JSONException e) {
 			e.printStackTrace();
-		}
-	}
-
-	private void migrateLegacyFavorites() {
-		final File newDir = getFavoritesDirectory();
-		final String[] currentFiles = newDir.list();
-		if (currentFiles != null && currentFiles.length > 0) {
-			return;
-		}
-
-		final File legacyDir = new File(Environment.getExternalStorageDirectory(), "RFM/favorites");
-		final File[] legacyFiles = legacyDir.listFiles((dir, name) -> name.endsWith(JSON_EXT));
-		if (legacyFiles == null || legacyFiles.length == 0) {
-			return;
-		}
-
-		for (final File legacyFile : legacyFiles) {
-			final File targetFile = new File(newDir, legacyFile.getName());
-			if (targetFile.exists()) {
-				continue;
-			}
-
-			try (
-					final FileInputStream input = new FileInputStream(legacyFile);
-					final FileOutputStream output = new FileOutputStream(targetFile)
-			) {
-				final byte[] buffer = new byte[8192];
-				int read;
-				while ((read = input.read(buffer)) != -1) {
-					output.write(buffer, 0, read);
-				}
-			} catch (IOException ignored) {
-			}
 		}
 	}
 

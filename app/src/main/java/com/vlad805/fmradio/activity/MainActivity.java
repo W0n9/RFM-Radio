@@ -85,6 +85,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static final int REQUEST_CODE_SETTINGS_CHANGED = 1050;
     private static final int REQUEST_CODE_RECORD_PERMISSIONS = 1051;
     private static final int REQUEST_CODE_PLAYBACK_PERMISSION = 1052;
+    private static final int REQUEST_CODE_NOTIFICATION_PERMISSION = 1053;
     private boolean mPendingRecordStart = false;
     private boolean mRecordPermissionsRequested = false;
     private boolean mPendingPlaybackStart = false;
@@ -171,6 +172,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onResume() {
         super.onResume();
 
+        ensureNotificationPermission();
         reloadPreferences();
         mFavoritesView.reload(false);
     }
@@ -433,8 +435,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mCtlToggle.setAlpha(enabled ? 1f : .5f);
     }
 
-    private boolean hasRecordingPermissions() {
-        final boolean hasRecordAudio =
+    /**
+     * Android 13 mutes all notification channels of new installs until POST_NOTIFICATIONS is
+     * granted. The FM service keeps running either way, so a refusal just hides the ongoing
+     * media notification — ask once per resume where it is missing, without nagging.
+     */
+    private void ensureNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return;
+        }
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
+        ActivityCompat.requestPermissions(
+                this,
+                new String[] { Manifest.permission.POST_NOTIFICATIONS },
+                REQUEST_CODE_NOTIFICATION_PERMISSION
+        );
+    }
+
+    private boolean hasRecordingPermissions() {        final boolean hasRecordAudio =
                 ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             return hasRecordAudio;

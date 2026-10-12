@@ -3,6 +3,7 @@ package com.vlad805.fmradio.service;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.pm.ServiceInfo;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.BroadcastReceiver;
@@ -11,11 +12,15 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.MediaSessionCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 import android.widget.Toast;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
+import androidx.core.app.ServiceCompat;
 import com.vlad805.fmradio.C;
 import com.vlad805.fmradio.R;
 import com.vlad805.fmradio.Storage;
@@ -26,6 +31,7 @@ import com.vlad805.fmradio.controller.FavoriteController;
 import com.vlad805.fmradio.controller.RadioController;
 import com.vlad805.fmradio.controller.RadioState;
 import com.vlad805.fmradio.controller.RadioStateUpdater;
+import com.vlad805.fmradio.controller.TunerStatus;
 import com.vlad805.fmradio.enums.TunerDriver;
 import com.vlad805.fmradio.helper.Audio;
 import com.vlad805.fmradio.helper.TunerDriverDetector;
@@ -66,6 +72,7 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
 
     private NotificationCompat.Builder mNBuilder;
     private NotificationManagerCompat mNotificationManager;
+    private MediaSessionCompat mMediaSession;
 
     private RadioController mRadioController;
     private FavoriteController mFavoriteController;
@@ -134,6 +141,92 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
         notificationManager.createNotificationChannel(recordingChannel);
     }
 
+    /**
+     * Creates the media session that routes lock screen, headset and system media panel
+     * controls onto the same command flow as the notification actions.
+     */
+    private void createMediaSession() {
+        mMediaSession = new MediaSessionCompat(this, "RFM");
+
+        // Callbacks arrive on the looper of the thread that created the session, the same
+        // thread onStartCommand runs on, so the driver calls need no extra synchronization.
+        mMediaSession.setCallback(new MediaSessionCompat.Callback() {
+            @Override
+            public void onPlay() {
+                startService(new Intent(FMService.this, FMService.class).setAction(C.Command.ENABLE));
+            }
+
+            @Override
+            public void onPause() {
+                startService(new Intent(FMService.this, FMService.class).setAction(C.Command.DISABLE));
+            }
+
+            @Override
+            public void onStop() {
+                startService(new Intent(FMService.this, FMService.class).setAction(C.Command.DISABLE));
+            }
+
+            @Override
+            public void onSkipToNext() {
+                startService(new Intent(FMService.this, FMService.class)
+                        .setAction(C.Command.NOTIFICATION_SEEK)
+                        .putExtra(C.Key.SEEK_HW_DIRECTION, 1));
+            }
+
+            @Override
+            public void onSkipToPrevious() {
+                startService(new Intent(FMService.this, FMService.class)
+                        .setAction(C.Command.NOTIFICATION_SEEK)
+                        .putExtra(C.Key.SEEK_HW_DIRECTION, -1));
+            }
+        });
+
+        updateMediaSessionState(TunerStatus.IDLE);
+        updateMediaSessionMetadata("");
+    }
+
+    /**
+     * Mirrors the tuner status into the media session playback state so the system media
+     * panel and headset controls reflect whether the radio is on.
+     */
+    private void updateMediaSessionState(final TunerStatus status) {
+        if (mMediaSession == null) {
+            return;
+        }
+
+        final boolean playing = status == TunerStatus.ENABLED;
+
+        // Active sessions receive media buttons; while paused-but-alive the play key
+        // resumes the radio instead of falling through to another app's session.
+        mMediaSession.setActive(playing);
+        mMediaSession.setPlaybackState(new PlaybackStateCompat.Builder()
+                .setActions(PlaybackStateCompat.ACTION_PLAY | PlaybackStateCompat.ACTION_PLAY_PAUSE
+                        | PlaybackStateCompat.ACTION_PAUSE | PlaybackStateCompat.ACTION_STOP
+                        | PlaybackStateCompat.ACTION_SKIP_TO_NEXT | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+                        | PlaybackStateCompat.ACTION_SEEK_TO)
+                .setState(playing ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED, 0, 0f)
+                .build());
+    }
+
+    /**
+     * Publishes the current station title (favorite name or RDS PS) as session metadata
+     * so lock screen and media panel show what is being listened to.
+     */
+    private void updateMediaSessionMetadata(final String title) {
+        if (mMediaSession == null) {
+            return;
+        }
+
+        final String displayTitle = (title == null || title.isEmpty())
+                ? getString(R.string.app_name)
+                : title;
+
+        mMediaSession.setMetadata(new MediaMetadataCompat.Builder()
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, displayTitle)
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, getString(R.string.app_name))
+                .build());
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -146,6 +239,7 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
         mFavoriteController = new FavoriteController(this);
         mNotificationManager = NotificationManagerCompat.from(this);
         createNotificationChannels();
+        createMediaSession();
 
         // Preferences
         mStorage = Storage.getInstance(this);
@@ -386,6 +480,11 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
 
         mStorage.unregisterOnTrayPreferenceChangeListener(this);
 
+        if (mMediaSession != null) {
+            mMediaSession.release();
+            mMediaSession = null;
+        }
+
         stopForeground(true);
     }
 
@@ -577,12 +676,14 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
                         final int frequency = mStorage.getInt(C.PrefKey.LAST_FREQUENCY, C.PrefDefaultValue.LAST_FREQUENCY);
                         mRadioController.setFrequency(frequency);
                     }
+                    updateMediaSessionState(TunerStatus.ENABLED);
                     updateNotification();
                     break;
                 }
 
                 case C.Event.DISABLED: {
                     mAudioService.stopAudio();
+                    updateMediaSessionState(TunerStatus.IDLE);
                     break;
                 }
 
@@ -713,6 +814,9 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
         );
 
         androidx.media.app.NotificationCompat.MediaStyle ms = new androidx.media.app.NotificationCompat.MediaStyle();
+        if (mMediaSession != null) {
+            ms.setMediaSession(mMediaSession.getSessionToken());
+        }
         NotificationCompat.Builder n = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_radio)
                 .setContentIntent(pendingMain)
@@ -772,6 +876,8 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
 
         mNBuilder.setContentTitle(title);
 
+        updateMediaSessionMetadata(title);
+
         /*
          * Text
          */
@@ -795,7 +901,8 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
         notification.flags |= Notification.FLAG_NO_CLEAR;
         notification.flags |= Notification.FLAG_ONGOING_EVENT;
 
-        startForeground(NOTIFICATION_ID, notification);
+        // The three-arg startForeground exists only on API 29+; ServiceCompat routes per version.
+        ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
     }
 
     private void updateRecordingNotification(final int duration, final int size) {
