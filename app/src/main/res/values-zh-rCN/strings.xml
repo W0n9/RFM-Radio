@@ -24,6 +24,7 @@
 	<string name="progress_starting">正在启用调谐器…</string>
 	<string name="menu_settings">设置</string>
 	<string name="menu_record">录音</string>
+	<string name="record_stop_cd">停止录音</string>
 	<string name="menu_about">关于</string>
 	<string name="menu_open_list_favorites">收藏</string>
 	<string name="popup_station_create">新建</string>

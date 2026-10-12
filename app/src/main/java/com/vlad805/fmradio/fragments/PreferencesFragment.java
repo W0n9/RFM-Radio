@@ -1,6 +1,7 @@
 package com.vlad805.fmradio.fragments;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -419,8 +420,9 @@ public class PreferencesFragment extends PreferenceFragmentCompat implements Pre
 	 * MainActivity can show the restart hint on return.
 	 */
 	private void markRestartRequired() {
-		if (getActivity() != null) {
-			getActivity().setResult(android.app.Activity.RESULT_OK, new android.content.Intent().putExtra("changed", true));
+		final Activity activity = getActivity();
+		if (activity != null) {
+			activity.setResult(Activity.RESULT_OK, new Intent().putExtra("changed", true));
 		}
 	}
 

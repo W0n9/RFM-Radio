@@ -23,6 +23,7 @@
 	<string name="progress_starting">Włączanie tunera…</string>
 	<string name="menu_settings">Ustawienia</string>
 	<string name="menu_record">Nagraj</string>
+	<string name="record_stop_cd">Zatrzymaj nagrywanie</string>
 	<string name="menu_about">O aplikacji</string>
 	<string name="menu_open_list_favorites">Ulubione</string>
 	<string name="popup_station_create">Stwórz</string>

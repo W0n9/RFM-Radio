@@ -351,26 +351,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      */
     private void showOverflowMenu() {
         final PopupMenu popup = new PopupMenu(this, findViewById(R.id.overflow_button));
-        popup.getMenu().add(0, 1, 0, R.string.menu_scan_stations);
-        popup.getMenu().add(0, 2, 1, R.string.menu_speaker).setCheckable(true);
-        popup.getMenu().add(0, 3, 2, R.string.menu_about);
+        popup.getMenu().add(0, MENU_ID_SCAN, 0, R.string.menu_scan_stations);
+        popup.getMenu().add(0, MENU_ID_SPEAKER, 1, R.string.menu_speaker).setCheckable(true);
+        popup.getMenu().add(0, MENU_ID_ABOUT, 2, R.string.menu_about);
 
         final boolean tunerEnabled = mLastState != null && TunerStatus.ENABLED.equals(mLastState.getStatus());
-        popup.getMenu().findItem(1).setEnabled(tunerEnabled);
-        popup.getMenu().findItem(2).setEnabled(tunerEnabled);
+        popup.getMenu().findItem(MENU_ID_SCAN).setEnabled(tunerEnabled);
+        popup.getMenu().findItem(MENU_ID_SPEAKER).setEnabled(tunerEnabled);
         if (mLastState != null) {
-            popup.getMenu().findItem(2).setChecked(mLastState.isForceSpeaker());
+            popup.getMenu().findItem(MENU_ID_SPEAKER).setChecked(mLastState.isForceSpeaker());
         }
 
         popup.setOnMenuItemClickListener(item -> {
             switch (item.getItemId()) {
-                case 1:
+                case MENU_ID_SCAN:
                     showSearchDialog();
                     return true;
-                case 2:
+                case MENU_ID_SPEAKER:
                     startService(new Intent(this, FMService.class).setAction(C.Command.SPEAKER_STATE));
                     return true;
-                case 3:
+                case MENU_ID_ABOUT:
                     startActivity(new Intent(this, AboutActivity.class));
                     return true;
                 default:
@@ -379,6 +379,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         });
         popup.show();
     }
+
+    private static final int MENU_ID_SCAN = 1;
+    private static final int MENU_ID_SPEAKER = 2;
+    private static final int MENU_ID_ABOUT = 3;
 
     private void toggleRecording() {
         if (mRadioController.getState().isRecording()) {
@@ -609,8 +613,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mSlider.setMinMaxValue(bandLimit.lower, bandLimit.upper, spacing);
         mSlider.setOnFrequencyChangeListener(mOnFrequencyChanged);
 
-        mBandMinLabel.setText(Utils.getMHz(bandLimit.lower, mFrequencyPrecision).trim());
-        mBandMaxLabel.setText(Utils.getMHz(bandLimit.upper, mFrequencyPrecision).trim());
+        mBandMinLabel.setText(Utils.getMHz(bandLimit.lower, mFrequencyPrecision));
+        mBandMaxLabel.setText(Utils.getMHz(bandLimit.upper, mFrequencyPrecision));
 
         updateFavoriteFrequencyMarkers();
     }
@@ -825,13 +829,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     /* ===================== Now-playing helpers (absorbed from RadioUIView) ===================== */
 
     private void setFrequencyText(final int kHz) {
-        mFrequencyText.setText(Utils.getMHz(kHz, mFrequencyPrecision).trim());
+        mFrequencyText.setText(Utils.getMHz(kHz, mFrequencyPrecision));
     }
 
     private void updateNowPlaying(final RadioState state) {
         final String ps = state.getPs() != null ? state.getPs() : "";
         mLastPsText = ps.isEmpty()
-                ? Utils.getMHz(state.getFrequency(), mFrequencyPrecision).trim()
+                ? Utils.getMHz(state.getFrequency(), mFrequencyPrecision)
                 : ps;
         if (!mStatusShown) {
             mPs.setText(mLastPsText);

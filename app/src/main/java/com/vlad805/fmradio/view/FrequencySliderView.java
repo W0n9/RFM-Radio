@@ -9,7 +9,6 @@ import android.graphics.Shader;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewConfiguration;
 import android.view.accessibility.AccessibilityNodeInfo;
 
 import androidx.annotation.NonNull;
@@ -68,7 +67,7 @@ public class FrequencySliderView extends View {
 	private float mDotRadius;
 	private float mDotHitRadius;
 	private float mThumbRadius;
-	private float mTouchSlop;
+	private float mDensity;
 
 	public FrequencySliderView(final Context context) {
 		this(context, null);
@@ -91,13 +90,13 @@ public class FrequencySliderView extends View {
 		mThumbShadowPaint.setColor(0x66000000);
 
 		final float d = getResources().getDisplayMetrics().density;
+		mDensity = d;
 		mTrackStroke = 3f * d;
 		mTrackPaint.setStrokeWidth(mTrackStroke);
 		mFillPaint.setStrokeWidth(mTrackStroke);
 		mDotRadius = 3.5f * d;
 		mDotHitRadius = 12f * d;
 		mThumbRadius = 8.5f * d;
-		mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
 	}
 
 	public void setOnFrequencyChangeListener(@Nullable final OnFrequencyChangedListener listener) {
@@ -121,10 +120,6 @@ public class FrequencySliderView extends View {
 		invalidate();
 	}
 
-	public int getFrequency() {
-		return mValue;
-	}
-
 	public void setFavoriteFrequencies(@Nullable final Set<Integer> frequencies) {
 		mFavorites = frequencies == null ? Collections.emptySet() : new HashSet<>(frequencies);
 		invalidate();
@@ -140,7 +135,7 @@ public class FrequencySliderView extends View {
 		super.onSizeChanged(w, h, oldw, oldh);
 
 		mTrackY = h / 2f;
-		final float inset = mThumbRadius + 2 * getResources().getDisplayMetrics().density;
+		final float inset = mThumbRadius + 2 * mDensity;
 		mTrackStartX = inset;
 		mTrackEndX = w - inset;
 
@@ -182,7 +177,7 @@ public class FrequencySliderView extends View {
 			}
 		}
 
-		canvas.drawCircle(thumbX, mTrackY + 1.5f * getResources().getDisplayMetrics().density, mThumbRadius, mThumbShadowPaint);
+		canvas.drawCircle(thumbX, mTrackY + 1.5f * mDensity, mThumbRadius, mThumbShadowPaint);
 		canvas.drawCircle(thumbX, mTrackY, mThumbRadius, mThumbPaint);
 	}
 

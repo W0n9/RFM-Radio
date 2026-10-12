@@ -55,11 +55,11 @@ public class FavoriteChipsAdapter extends RecyclerView.Adapter<RecyclerView.View
 		final int currentIndex = findStationIndexByFrequency(mActiveFrequency);
 
 		if (previousIndex >= 0) {
-			notifyItemChanged(previousIndex);
+			notifyItemChanged(toAdapterPosition(previousIndex));
 		}
 
 		if (currentIndex >= 0) {
-			notifyItemChanged(currentIndex);
+			notifyItemChanged(toAdapterPosition(currentIndex));
 		}
 	}
 
@@ -78,20 +78,30 @@ public class FavoriteChipsAdapter extends RecyclerView.Adapter<RecyclerView.View
 
 	@Override
 	public int getItemViewType(final int position) {
-		if (position < mList.size()) {
-			return TYPE_STATION;
-		}
-
 		if (mEditMode) {
-			return TYPE_ACTION_DONE;
+			// Edit mode: stations only, plus the trailing DONE chip.
+			return position < mList.size() ? TYPE_STATION : TYPE_ACTION_DONE;
 		}
 
-		return position == mList.size() ? TYPE_ACTION_ADD : TYPE_ACTION_LISTS;
+		// Normal mode: "+" always first (never scrolls off), then stations, then the lists chip.
+		if (position == 0) {
+			return TYPE_ACTION_ADD;
+		}
+		return position <= mList.size() ? TYPE_STATION : TYPE_ACTION_LISTS;
 	}
 
 	@Override
 	public int getItemCount() {
 		return mList.size() + (mEditMode ? 1 : 2);
+	}
+
+	/** Adapter position of a station = list index, plus one for the leading "+" outside edit mode. */
+	private int toAdapterPosition(final int listIndex) {
+		return mEditMode ? listIndex : listIndex + 1;
+	}
+
+	private int toListIndex(final int adapterPosition) {
+		return mEditMode ? adapterPosition : adapterPosition - 1;
 	}
 
 	@Override
@@ -106,7 +116,7 @@ public class FavoriteChipsAdapter extends RecyclerView.Adapter<RecyclerView.View
 	@Override
 	public void onBindViewHolder(@NonNull final RecyclerView.ViewHolder holder, final int position) {
 		if (holder.getItemViewType() == TYPE_STATION) {
-			final FavoriteStation station = mList.get(position);
+			final FavoriteStation station = mList.get(toListIndex(position));
 			((StationHolder) holder).populate(station, station.getFrequency() == mActiveFrequency);
 			return;
 		}
@@ -171,7 +181,7 @@ public class FavoriteChipsAdapter extends RecyclerView.Adapter<RecyclerView.View
 
 		void populate(final FavoriteStation station, final boolean active) {
 			itemView.setSelected(active);
-			frequency.setText(Utils.getMHz(station.getFrequency()).trim());
+			frequency.setText(Utils.getMHz(station.getFrequency()));
 			name.setText(station.getTitle());
 			name.setVisibility(station.getTitle() == null || station.getTitle().isEmpty() ? View.GONE : View.VISIBLE);
 		}

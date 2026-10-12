@@ -124,13 +124,14 @@ public class FavoriteChipsView extends RecyclerView implements RecyclerItemClick
 			return;
 		}
 
-		if (position < mStations.size()) {
-			mRadioController.setFrequency(mStations.get(position).getFrequency());
+		// Row order: "+" chip, stations, lists chip.
+		if (position == 0) {
+			addCurrentStation();
 			return;
 		}
 
-		if (position == mStations.size()) {
-			addCurrentStation();
+		if (position <= mStations.size()) {
+			mRadioController.setFrequency(mStations.get(position - 1).getFrequency());
 			return;
 		}
 
@@ -141,11 +142,12 @@ public class FavoriteChipsView extends RecyclerView implements RecyclerItemClick
 
 	@Override
 	public void onLongItemClick(final View view, final int position) {
-		if (mEditMode || mStations == null || !isEnabled() || position >= mStations.size()) {
+		if (mEditMode || mStations == null || !isEnabled() || position <= 0 || position > mStations.size()) {
 			return;
 		}
 
-		final FavoriteStation station = mStations.get(position);
+		final int listIndex = position - 1;
+		final FavoriteStation station = mStations.get(listIndex);
 
 		final PopupMenu popupMenu = new PopupMenu(getContext(), view);
 		final Menu menu = popupMenu.getMenu();
@@ -208,8 +210,9 @@ public class FavoriteChipsView extends RecyclerView implements RecyclerItemClick
 			final String ps = state.getPs();
 			new EditTextDialog(getContext(), ps == null ? "" : ps.trim(), title -> {
 				mStations.add(new FavoriteStation(state.getFrequency(), title));
-				mAdapter.notifyItemInserted(mStations.size() - 1);
-				scrollToPosition(mStations.size() - 1);
+				// Station N (0-based) renders at adapter position N+1 behind the "+" chip.
+				mAdapter.notifyItemInserted(mStations.size());
+				scrollToPosition(mStations.size());
 				onFavoriteListUpdated();
 			}).setTitle(R.string.popup_station_create).setHint(R.string.popup_station_create_hint).open();
 		});

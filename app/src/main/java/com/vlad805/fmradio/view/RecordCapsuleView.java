@@ -61,6 +61,7 @@ public class RecordCapsuleView extends LinearLayout {
 			mLabel.setTextColor(ContextCompat.getColor(getContext(), R.color.c_accent));
 			mTime.setTextColor(ContextCompat.getColor(getContext(), R.color.c_accent));
 			mTime.setVisibility(View.VISIBLE);
+			setContentDescription(getContext().getString(R.string.record_stop_cd));
 			startBlink();
 		} else {
 			applyIdleStyle();
@@ -82,6 +83,7 @@ public class RecordCapsuleView extends LinearLayout {
 		mDot.setAlpha(1f);
 		mLabel.setTextColor(ContextCompat.getColor(getContext(), R.color.c_ink_dim));
 		mTime.setVisibility(View.GONE);
+		setContentDescription(getContext().getString(R.string.menu_record));
 	}
 
 	private void startBlink() {

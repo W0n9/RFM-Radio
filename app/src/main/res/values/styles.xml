@@ -10,14 +10,21 @@
 		<item name="android:statusBarColor">@color/c_bg</item>
 		<item name="android:navigationBarColor">@color/c_bg</item>
 		<item name="alertDialogTheme">@style/AppDialogTheme</item>
+		<item name="popupMenuStyle">@style/AppPopupMenuStyle</item>
 	</style>
 
 	<!-- Dialogs in the C palette: near-black surface, coral accent -->
 	<style name="AppDialogTheme" parent="ThemeOverlay.AppCompat.Dialog.Alert">
 		<item name="colorAccent">@color/c_accent</item>
+		<item name="colorBackgroundFloating">@color/c_surface</item>
 		<item name="android:colorBackground">@color/c_surface</item>
 		<item name="colorControlNormal">@color/c_ink_dim</item>
 		<item name="android:textColorPrimary">@color/c_ink</item>
+	</style>
+
+	<!-- Popup menus (overflow, chip long-press): solid rounded surface -->
+	<style name="AppPopupMenuStyle" parent="Widget.AppCompat.PopupMenu">
+		<item name="android:popupBackground">@drawable/popup_bg</item>
 	</style>
 
 	<!-- Toolbar overlay: ink-colored navigation and title on the flat dark bar -->
