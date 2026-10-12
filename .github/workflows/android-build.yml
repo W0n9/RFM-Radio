@@ -34,14 +34,18 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses >/dev/null
+
       - name: Cache Android SDK components
         id: sdk-cache
         uses: actions/cache@v6
         with:
           # Only the components that actually get downloaded; the runner image
-          # ships the platforms, build-tools and platform-tools we pin.
+          # ships the platforms, build-tools and platform-tools we pin. The
+          # licenses dir is root-owned on the image and cannot be untarred by
+          # the runner user, so it must stay out of the cache.
           path: |
-            /usr/local/lib/android/sdk/licenses
             /usr/local/lib/android/sdk/cmake/3.22.1
             /usr/local/lib/android/sdk/ndk/29.0.14033849
           # The install list lives in this file, so hashing the workflow keeps
@@ -51,7 +55,6 @@ jobs:
       - name: Install Android SDK components
         if: steps.sdk-cache.outputs.cache-hit != 'true'
         run: |
-          yes | sdkmanager --licenses >/dev/null
           sdkmanager \
             "platform-tools" \
             "platforms;android-36" \
