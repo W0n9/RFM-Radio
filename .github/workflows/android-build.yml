@@ -5,18 +5,12 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Release version, for example 0.7.0"
-        required: true
-        type: string
 
 permissions:
   contents: write
 
 jobs:
   release:
-    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.version != ''
     runs-on: ubuntu-latest
     env:
       ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
@@ -54,40 +48,51 @@ jobs:
         run: |
           if [[ -n "${ANDROID_RELEASE_KEYSTORE_BASE64}" ]]; then
             echo "${ANDROID_RELEASE_KEYSTORE_BASE64}" | base64 --decode > "${RUNNER_TEMP}/android-release.keystore"
+          else
+            echo "No release keystore secret configured; the release APKs will be signed with the debug key." >&2
           fi
 
-      - name: Build release APK
+      - name: Build release APKs
         env:
           ANDROID_RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/android-release.keystore
         run: bash ./gradlew --no-daemon :app:assembleRelease
 
-      - name: Read app version
-        id: app_version
+      - name: Report built APKs
         run: |
-          if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
-            VERSION_NAME="${GITHUB_REF_NAME#v}"
-          else
-            VERSION_NAME="${{ github.event.inputs.version }}"
-          fi
-          if [[ -z "${VERSION_NAME}" ]]; then
-            echo "Failed to resolve app version" >&2
+          shopt -s nullglob
+          APKS=(app/build/outputs/apk/release/*.apk)
+          if (( ${#APKS[@]} == 0 )); then
+            echo "No APKs were produced" >&2
             exit 1
           fi
-          echo "version_name=${VERSION_NAME}" >> "${GITHUB_OUTPUT}"
-          echo "tag_name=v${VERSION_NAME}" >> "${GITHUB_OUTPUT}"
+          for apk in "${APKS[@]}"; do
+            printf '%s (%s bytes)\n' "$(basename "${apk}")" "$(stat -c%s "${apk}")"
+          done
 
-      - name: Upload release APK
+      - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk
+          name: rfm-radio-apks
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
+      - name: Resolve release tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        id: release_tag
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          GRADLE_VERSION="$(sed -nE 's/^def version(Major|Minor|Patch) = ([0-9]+)$/\2/p' app/build.gradle | paste -sd. -)"
+          if [[ "v${GRADLE_VERSION}" != "${TAG}" ]]; then
+            echo "::warning::Tag ${TAG} does not match the version v${GRADLE_VERSION} declared in app/build.gradle"
+          fi
+          echo "tag_name=${TAG}" >> "${GITHUB_OUTPUT}"
+
       - name: Publish draft release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.app_version.outputs.tag_name }}
-          name: ${{ steps.app_version.outputs.tag_name }}
+          tag_name: ${{ steps.release_tag.outputs.tag_name }}
+          name: ${{ steps.release_tag.outputs.tag_name }}
           target_commitish: ${{ github.sha }}
           draft: true
           prerelease: false
