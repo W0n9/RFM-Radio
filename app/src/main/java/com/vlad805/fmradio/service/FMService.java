@@ -21,6 +21,7 @@ import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.app.ServiceCompat;
+import androidx.core.content.ContextCompat;
 import com.vlad805.fmradio.C;
 import com.vlad805.fmradio.R;
 import com.vlad805.fmradio.Storage;
@@ -830,7 +831,7 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
                 .setSilent(true)
                 .setAutoCancel(false)
                 .setOngoing(true)
-                .setColor(getResources().getColor(R.color.primary_blue))
+                .setColor(ContextCompat.getColor(this, R.color.c_accent))
                 .addAction(R.drawable.ic_go_down, getString(R.string.seek_down), pendingSeekDown) // #0
                 .addAction(R.drawable.ic_stop, getString(R.string.toggle_play_pause), pendingStop); // #1
 
@@ -924,7 +925,7 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
                 .setSilent(true)
                 .setAutoCancel(false)
                 .setOngoing(true)
-                .setColor(getResources().getColor(R.color.record_active))
+                .setColor(ContextCompat.getColor(this, R.color.c_accent))
                 .addAction(R.drawable.ic_record_off, getString(R.string.seek_down), pendingRecordStop)
                 .setStyle(new androidx.media.app.NotificationCompat.MediaStyle().setShowActionsInCompactView(0));
 

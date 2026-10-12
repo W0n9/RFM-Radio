@@ -2,12 +2,14 @@ package com.vlad805.fmradio.view;
 
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.util.AttributeSet;
 import android.view.View;
 
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
+
+import com.vlad805.fmradio.R;
 
 public final class SignalStrengthView extends View {
     private static final int BAR_COUNT = 5;
@@ -16,7 +18,7 @@ public final class SignalStrengthView extends View {
 
     public SignalStrengthView(final Context context, @Nullable final AttributeSet attrs) {
         super(context, attrs);
-        mPaint.setColor(Color.WHITE);
+        mPaint.setColor(ContextCompat.getColor(context, R.color.c_ink));
     }
 
     public void setRmssi(final int rmssi) {

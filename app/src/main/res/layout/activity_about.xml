@@ -5,7 +5,7 @@
 		xmlns:app="http://schemas.android.com/apk/res-auto"
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
-		android:background="@color/main_background"
+		android:background="@color/c_bg"
 		tools:context=".activity.AboutActivity">
 	<androidx.appcompat.widget.Toolbar
 			android:layout_width="0dp"
@@ -35,7 +35,7 @@
 		android:layout_height="wrap_content"
 		android:layout_marginTop="16dp"
 		android:text="@string/app_name"
-		android:textColor="@color/text_primary"
+		android:textColor="@color/c_ink"
 		android:textSize="36sp"
 		app:layout_constraintEnd_toEndOf="parent"
 		app:layout_constraintStart_toStartOf="parent"
@@ -47,7 +47,7 @@
 			android:layout_height="wrap_content"
 			android:layout_marginTop="8dp"
 			android:paddingBottom="3dp"
-			android:textColor="@color/text_secondary"
+			android:textColor="@color/c_ink_dim"
 			app:reflectionHeightMultiple="0.5"
 			app:reflectionPadding="4"
 			android:textAppearance="@android:style/TextAppearance.DeviceDefault.Small"
@@ -82,7 +82,7 @@
 				android:paddingStart="12dp"
 				android:paddingEnd="12dp"
 				android:text="@string/pref_info_link_github"
-				android:textColor="@color/text_primary" />
+				android:textColor="@color/c_ink" />
 
 		<TextView
 				android:id="@+id/about_link_telegram"
@@ -98,7 +98,7 @@
 				android:paddingStart="12dp"
 				android:paddingEnd="12dp"
 				android:text="@string/pref_info_link_telegram"
-				android:textColor="@color/text_primary" />
+				android:textColor="@color/c_ink" />
 
 		<TextView
 				android:id="@+id/about_link_site"
@@ -114,7 +114,7 @@
 				android:paddingStart="12dp"
 				android:paddingEnd="12dp"
 				android:text="@string/pref_info_link_site"
-				android:textColor="@color/text_primary" />
+				android:textColor="@color/c_ink" />
 	</LinearLayout>
 
 	<TextView
@@ -123,7 +123,7 @@
 		android:layout_height="19dp"
 		android:layout_marginBottom="16dp"
 		android:text="@string/about_author"
-		android:textColor="@color/text_secondary"
+		android:textColor="@color/c_ink_dim"
 		app:layout_constraintBottom_toBottomOf="parent"
 		app:layout_constraintEnd_toEndOf="parent"
 		app:layout_constraintStart_toStartOf="parent" />

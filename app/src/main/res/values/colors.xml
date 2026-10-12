@@ -1,16 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-	<!-- For Android -->
-	<color name="color_accent">@color/primary_blue</color>
+	<!-- C · Air palette (dark-only) -->
+	<color name="c_bg">#0A0A0C</color>
+	<color name="c_surface">#17171B</color>
+	<color name="c_outline">#2C2C31</color>
+	<color name="c_outline_soft">#2A2A30</color>
+	<color name="c_ink">#F5F5F7</color>
+	<color name="c_ink_dim">#9A9AA2</color>
+	<color name="c_ink_faint">#63666E</color>
+	<color name="c_scale_label">#4A4A51</color>
+	<color name="c_accent">#FF5A49</color>
+	<color name="c_accent_soft">#FF9A6A</color>
+	<color name="c_accent_bg">#14FF5A49</color>
+	<color name="c_pty_text">#FFB0A6</color>
+	<color name="c_pty_line">#3DFF5A49</color>
+	<color name="c_blob_violet">#7C5CFF</color>
+	<color name="c_blob_blue">#4F8CFF</color>
+	<color name="c_blob_teal">#2EE6C8</color>
+
 	<color name="ic_launcher_background">#000000</color>
 
-	<!-- App colors -->
+	<!-- Legacy palette — being phased out; do not add new references -->
+	<color name="color_accent">@color/primary_blue</color>
 	<color name="main_background">#212121</color>
 	<color name="primary_blue">#2979ff</color>
 	<color name="text_primary">#ffffff</color>
 	<color name="text_secondary">#b0bec5</color>
 	<color name="favorite_station_active_stroke">#992979FF</color>
-
-	<!-- Recording colors -->
 	<color name="record_active">#ff0000</color>
 </resources>
