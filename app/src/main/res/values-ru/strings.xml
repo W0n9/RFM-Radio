@@ -23,7 +23,6 @@
 	<string name="favorite_lists_selected_count">Выбрано: %d</string>
 	<string name="menu_open_list_favorites">Избранное</string>
 	<string name="menu_record">Запись</string>
-	<string name="recording_duration">Длительность записи</string>
 	<string name="menu_settings">Настройки</string>
 	<string name="notification_mhz">%.1f МГц</string>
 	<string name="notification_recorded">Запись %3$s завершена: %1$s (%2$.1f МБ)</string>
@@ -88,15 +87,12 @@
 	<string name="status_installing">Установка FM backend…</string>
 	<string name="status_launching">Запуск FM backend…</string>
 	<string name="favorites_empty_hint">Список избранного пуст. Нажмите +, чтобы добавить текущую частоту.</string>
-	<string name="open_favorites_lists">Открыть списки избранного</string>
-	<string name="favorites_edit">Изменить</string>
 	<string name="favorites_done">Готово</string>
 	<string name="signal_strength_indicator">Уровень сигнала</string>
 	<string name="stereo_mode_label">Стерео</string>
 	<string name="mono_mode_label">Моно</string>
 	<string name="stereo_mode_active">Стереоприём</string>
 	<string name="mono_mode_active">Моноприём</string>
-	<string name="drag_to_reorder">Перетащите для изменения порядка станции</string>
 	<string name="seek_up">Поиск вперёд</string>
 	<string name="service_record_unsupported">Запись эфира не поддерживается этим драйвером.</string>
 	<string name="record_permissions_required_title">Нужны разрешения для записи</string>
@@ -106,6 +102,12 @@
 	<string name="playback_permission_required">Для воспроизведения FM на этом устройстве нужен доступ к микрофону. Откройте настройки приложения и выдайте разрешение.</string>
 	<string name="toast_record_ended">Запись %1$s сохранена\nДлительность: %3$s (%2$.1f МБ)</string>
 	<string name="toggle_play_pause">Старт</string>
+	<string name="menu_more">Ещё</string>
+	<string name="settings_cd">Настройки</string>
+	<string name="frequency_slider_cd">Ползунок частоты</string>
+	<string name="favorite_add_cd">Добавить текущую станцию в избранное</string>
+	<string name="favorite_lists_entry">Списки</string>
+	<string name="popup_station_reorder">Изменить порядок</string>
 	<string name="toolbar_favorite_title">Избранное</string>
 	<string name="main_warning_pref_changed_title">Внимание!</string>
 	<string name="main_warning_pref_changed_content">Для применения некоторых настроек, которые Вы изменили, нужно полностью перезапустить приложение:\n1. Остановить тюнер (кнопка выключения наверху)\n2. Закрыть и смахнуть приложение из мультизадачности\n3. Запустить приложение.</string>
@@ -128,9 +130,6 @@
 	<string name="pref_tuner_soft_mute">Подавление шума</string>
 	<string name="pref_tuner_soft_mute_on">Подавлять шум при слабом FM-сигнале</string>
 	<string name="pref_tuner_soft_mute_off">Не подавлять шум слабого сигнала</string>
-	<string name="pref_warning_applying_only_after_restart">Внимание! Эта настройка вступит в силу только после полного
-		перезапуска приложения.
-	</string>
 	<string name="pref_tuner_power_mode">Энергосбережение</string>
 	<string name="pref_tuner_power_mode_low">Когда приложение работает в фоновом режиме, тюнер потребляет меньше
 		энергии.</string>

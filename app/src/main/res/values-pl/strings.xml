@@ -1,6 +1,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 	<string name="app_name">RFM Radio</string>
 	<string name="toggle_play_pause">Graj</string>
+	<string name="menu_more">Więcej</string>
+	<string name="settings_cd">Ustawienia</string>
+	<string name="frequency_slider_cd">Suwak częstotliwości</string>
+	<string name="favorite_add_cd">Dodaj bieżącą stację do ulubionych</string>
+	<string name="favorite_lists_entry">Listy</string>
+	<string name="popup_station_reorder">Zmień kolejność</string>
 	<string name="jump_up">Przeskocz</string>
 	<string name="seek_up">Szukaj</string>
 	<string name="jump_down">Przeskocz do tyłu</string>
@@ -10,19 +16,15 @@
 	<string name="status_installing">Instalowanie backendu FM…</string>
 	<string name="status_launching">Uruchamianie backendu FM…</string>
 	<string name="favorites_empty_hint">Lista ulubionych jest pusta. Naciśnij +, aby dodać bieżącą częstotliwość.</string>
-	<string name="open_favorites_lists">Otwórz listy ulubionych</string>
-	<string name="favorites_edit">Edytuj</string>
 	<string name="favorites_done">Gotowe</string>
 	<string name="signal_strength_indicator">Siła sygnału</string>
 	<string name="stereo_mode_label">Stereo</string>
 	<string name="mono_mode_label">Mono</string>
 	<string name="stereo_mode_active">Odbiór stereo</string>
 	<string name="mono_mode_active">Odbiór mono</string>
-	<string name="drag_to_reorder">Przeciągnij, aby zmienić kolejność stacji</string>
 	<string name="progress_starting">Włączanie tunera…</string>
 	<string name="menu_settings">Ustawienia</string>
 	<string name="menu_record">Nagraj</string>
-	<string name="recording_duration">Czas nagrywania</string>
 	<string name="menu_about">O aplikacji</string>
 	<string name="menu_open_list_favorites">Ulubione</string>
 	<string name="popup_station_create">Stwórz</string>
@@ -124,8 +126,6 @@
 	<string name="pref_tuner_power_mode_normal">Oszczędzanie energii jest wyłączone.</string>
 	<string name="pref_tuner_power_mode">Oszczędzanie energii</string>
 	<string name="pref_tuner_region">Region / zespół</string>
-    <string name="pref_warning_applying_only_after_restart">Uwaga! Te zmiany zostaną zastosowane dopiero po pełnym ponownym uruchomieniu
-        Aplikacji.</string>
     <string name="pref_tuner_stereo">Stereo</string>
 	<string name="pref_tuner_stereo_on">Używaj stereo jeśli dostępne</string>
 	<string name="pref_tuner_stereo_off">Zawsze mono</string>

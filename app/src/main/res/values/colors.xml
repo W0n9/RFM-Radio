@@ -21,13 +21,4 @@
 	<color name="c_blob_teal">#2EE6C8</color>
 
 	<color name="ic_launcher_background">#000000</color>
-
-	<!-- Legacy palette — being phased out; do not add new references -->
-	<color name="color_accent">@color/primary_blue</color>
-	<color name="main_background">#212121</color>
-	<color name="primary_blue">#2979ff</color>
-	<color name="text_primary">#ffffff</color>
-	<color name="text_secondary">#b0bec5</color>
-	<color name="favorite_station_active_stroke">#992979FF</color>
-	<color name="record_active">#ff0000</color>
 </resources>
