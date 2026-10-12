@@ -38,6 +38,7 @@
 	<string name="menu_favorite_list_rename">Zmień nazwę listy</string>
 	<string name="menu_favorite_list_import">Importuj listę</string>
 	<string name="menu_favorite_list_export">Eksportuj listę</string>
+	<string name="menu_favorite_list_export_all">Eksportuj wszystkie listy</string>
 	<string name="menu_favorite_list_export_selected">Eksportuj wybrane listy</string>
 	<string name="menu_favorite_list_remove_selected">Usuń wybrane listy</string>
 	<string name="favorite_lists_remove_selected_confirm">Usunąć wybrane listy (%d)?</string>
@@ -53,6 +54,8 @@
 	<string name="favorite_list_import_error">Nie udało się zaimportować listy ulubionych</string>
 	<string name="favorite_list_export_success">Wyeksportowano listę \"%s\"</string>
 	<string name="favorite_list_export_error">Nie udało się wyeksportować listy ulubionych</string>
+	<string name="favorite_list_export_all_success">Wyeksportowano list: %d</string>
+	<string name="favorite_list_export_all_error">Nie udało się wyeksportować list ulubionych</string>
 	<string name="favorite_list_remove_title">Potwierdzenie</string>
 	<string name="favorite_list_remove_message">Czy jesteś pewien, że chcesz usunąć tą listę \'%s\'?</string>
 	<string name="pref_activity_title">Ustawienia</string>
