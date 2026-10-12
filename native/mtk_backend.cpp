@@ -46,11 +46,14 @@ constexpr const char *kErrFailed = "ERR_FAILED";
 constexpr const char *kErrInvalidAntenna = "ERR_UNV_ANT";
 constexpr uint64_t kMetricSettleMs = 300;
 constexpr int kRdsIdlePollMs = 500;
-// Step-scan parameters. Threshold calibrated on cannon against the stock
-// app's results: audible stations land at -74..-88 dBm, noise/interference
-// haze starts at -90 dBm.
-constexpr uint32_t kScanSettleMs = 60;
-constexpr int32_t kScanThresholdDbm = -88;
+// Step-scan parameters. Each channel is one SOFT_MUTE_TUNE ioctl (tune +
+// sample + kernel verdict; no userspace settle). The threshold is on the raw
+// CQI scale that ioctl returns: GETRSSI's dBm-like value is raw*6/16, and
+// our calibrated -88 dBm floor (audible stations at -74..-88 dBm, haze from
+// -90) corresponds to about -235 raw. The kernel's own verdict is looser
+// (fm_cust.cfg RSSI threshold -296 raw ≈ -111 dBm), so this floor still
+// filters kernel-valid but inaudible channels.
+constexpr int32_t kScanThresholdCqiRaw = -235;
 constexpr uint32_t kScanDeadlinePerStepMs = 200;
 constexpr uint64_t kSeekDeadlineMs = 60000;
 
@@ -515,7 +518,6 @@ private:
     }
 
     bool scan_tune(uint32_t frequency_khz) {
-        scan_step_khz_ = frequency_khz;
         fm_tune_parm parm = mtk_make_tune_parm(
                 static_cast<uint8_t>(profile_->mtk_band),
                 spacing_khz_,
@@ -534,17 +536,16 @@ private:
                 .upper_khz = profile_->upper_frequency_khz,
                 .start_khz = current_frequency(),
                 .step_khz = spacing_khz_,
-                .threshold_dbm = kScanThresholdDbm,
-                .settle_ms = kScanSettleMs,
+                .threshold_raw = kScanThresholdCqiRaw,
                 .deadline_ms = is_scan
-                        ? monotonic_ms() + steps * (kScanSettleMs + kScanDeadlinePerStepMs)
+                        ? monotonic_ms() + steps * kScanDeadlinePerStepMs
                         : monotonic_ms() + kSeekDeadlineMs,
         };
-        StepScanEnv env = {&env_tune, &env_rssi, &env_cancel, &env_now, &env_sleep, this};
+        StepScanEnv env = {&env_probe, &env_cancel, &env_now, this};
 
-        mtk_log("scan", "start mode=%d lower_khz=%u upper_khz=%u spacing_khz=%d threshold_dbm=%d",
+        mtk_log("scan", "start mode=%d lower_khz=%u upper_khz=%u spacing_khz=%d threshold_raw=%d",
                 static_cast<int>(scan_mode_), config.lower_khz, config.upper_khz,
-                config.step_khz, config.threshold_dbm);
+                config.step_khz, config.threshold_raw);
 
         const StepScanOutcome outcome = step_scan_run(scan_mode_, config, env, is_scan ? &scan_collector_ : nullptr);
 
@@ -579,15 +580,13 @@ private:
         scan_done_.store(true);
     }
 
-    static bool env_tune(uint32_t frequency_khz, void *ctx) {
-        return static_cast<MtkBackend *>(ctx)->scan_tune(frequency_khz);
-    }
-
-    static bool env_rssi(int32_t *out, void *ctx) {
+    static bool env_probe(uint32_t frequency_khz, int32_t *rssi_raw, int32_t *valid, void *ctx) {
         MtkBackend *self = static_cast<MtkBackend *>(ctx);
-        const bool ok = mtk_get_rssi(self->fd_, out);
+        const uint16_t mtk_freq = mtk_freq_from_khz(frequency_khz);
+        const bool ok = mtk_soft_mute_tune(self->fd_, mtk_freq, rssi_raw, valid);
         if (ok) {
-            mtk_log("scan", "step frequency_khz=%u rssi_dbm=%d", self->scan_step_khz_, *out);
+            mtk_log("scan", "step frequency_khz=%u rssi_raw=%d valid=%d",
+                    frequency_khz, *rssi_raw, *valid);
         }
         return ok;
     }
@@ -598,10 +597,6 @@ private:
 
     static uint64_t env_now(void * /*ctx*/) {
         return monotonic_ms();
-    }
-
-    static void env_sleep(uint32_t ms, void * /*ctx*/) {
-        usleep(ms * 1000);
     }
 
     // --- shared tune path ---
@@ -702,7 +697,6 @@ private:
     bool scan_thread_joinable_ = false;
     StepScanMode scan_mode_ = StepScanMode::kFullScan;
     ScanResultCollector scan_collector_;
-    uint32_t scan_step_khz_ = 0;
     int consecutive_ioctl_failures_ = 0;
 };
 

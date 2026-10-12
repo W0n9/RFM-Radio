@@ -56,3 +56,29 @@ constexpr int32_t kMtkForceMono = 1;
 #define MTK_IOCTL_IS_FM_POWERED_UP  _IOWR(MTK_IOCTL_MAGIC, 24, uint32_t*)
 #define MTK_IOCTL_ANA_SWITCH        _IOWR(MTK_IOCTL_MAGIC, 30, int32_t*)
 #define MTK_IOCTL_SETMONOSTERO      _IOWR(MTK_IOCTL_MAGIC, 37, int32_t)
+#define MTK_IOCTL_SOFT_MUTE_TUNE    _IOWR(MTK_IOCTL_MAGIC, 63, struct fm_softmute_tune_t*)
+
+// One blocking ioctl that tunes, samples, and judges the channel inside the
+// kernel/firmware (the path MIUI's libfmjni uses for seek/scan; the driver's
+// FM_IOCTL_SEEK/SCAN are dead on this .ko). Layout from kernel fm_main.h,
+// natural alignment: rssi@0, freq@4-5, pad@6-7, valid@8-11.
+//
+// Scale caution: rssi is the raw 10-bit CQI value, NOT the GETRSSI scale.
+// GETRSSI (mt6631_GetCurRSSI) applies *6/16 to produce a dBm-like value;
+// SOFT_MUTE_TUNE (mt6631_soft_mute_tune) returns the folded 10-bit value
+// as-is. The kernel's own RSSI threshold -296 (fm_cust.cfg) is therefore
+// roughly -111 dBm, and our -88 dBm corresponds to about -235 raw.
+//
+// valid is the kernel's joint verdict (RSSI/PAMD/MR/ATDC/PRX/ATDEV/SMG
+// against fm_cust.cfg + compiled defaults). On a failed ioctl the kernel
+// writes nothing back (fm_module.c copies out only on success), so callers
+// must treat a false return as "no reading", not "valid=0".
+struct fm_softmute_tune_t {
+    int32_t rssi;    // OUT: raw CQI RSSI (10-bit folded, ~0.375x the dBm scale)
+    uint16_t freq;   // IN: 10 kHz units (8750 = 87.5 MHz)
+    int32_t valid;   // OUT: kernel joint verdict, 1 = station
+};
+
+static_assert(sizeof(fm_softmute_tune_t) == 12, "fm_softmute_tune_t must stay 12 bytes");
+static_assert(offsetof(fm_softmute_tune_t, freq) == 4, "freq must sit at offset 4");
+static_assert(offsetof(fm_softmute_tune_t, valid) == 8, "valid must sit at offset 8");

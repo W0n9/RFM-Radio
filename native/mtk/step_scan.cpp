@@ -10,16 +10,21 @@ bool scan_expired(const StepScanConfig &config, const StepScanEnv &env) {
     return env.now_ms != nullptr && env.now_ms(env.ctx) >= config.deadline_ms;
 }
 
-// Tunes, settles, samples. Returns false when the driver rejected the step
-// (the channel is skipped, the walk continues).
-bool probe(uint32_t frequency_khz, const StepScanConfig &config, const StepScanEnv &env, int32_t *rssi_dbm) {
-    if (!env.tune(frequency_khz, env.ctx)) {
+// A channel counts only when the kernel judged it valid AND it clears our
+// own level floor (the kernel's own RSSI threshold is looser than ours).
+// Everything else — rejected probe, invalid verdict, weak level — becomes
+// kNoSignal, which keeps the local-peak chain intact.
+bool probe(uint32_t frequency_khz, const StepScanConfig &config, const StepScanEnv &env, int32_t *rssi_raw) {
+    int32_t level = 0;
+    int32_t valid = 0;
+    if (!env.probe(frequency_khz, &level, &valid, env.ctx) || !valid) {
         return false;
     }
-    if (env.sleep_ms != nullptr && config.settle_ms > 0) {
-        env.sleep_ms(config.settle_ms, env.ctx);
+    if (level < config.threshold_raw) {
+        return false;
     }
-    return env.rssi_dbm(rssi_dbm, env.ctx);
+    *rssi_raw = level;
+    return true;
 }
 
 StepScanOutcome run_scan(const StepScanConfig &config, const StepScanEnv &env, ScanResultCollector *collector) {
@@ -29,7 +34,7 @@ StepScanOutcome run_scan(const StepScanConfig &config, const StepScanEnv &env, S
     // One real station bleeds onto adjacent channels; keep only local maxima
     // (a channel stronger than both neighbors) so one station lists once.
     // Evaluated with one step of lag: the previous channel is judged once the
-    // current one is known. Failed probes count as -inf but keep the chain.
+    // current one is known. Rejected probes count as -inf but keep the chain.
     constexpr int32_t kNoSignal = INT32_MIN;
     bool have_prev = false;
     uint32_t prev_freq = 0;
@@ -46,26 +51,26 @@ StepScanOutcome run_scan(const StepScanConfig &config, const StepScanEnv &env, S
             return outcome;
         }
 
-        int32_t rssi_dbm = kNoSignal;
-        if (!probe(freq, config, env, &rssi_dbm)) {
-            rssi_dbm = kNoSignal;
+        int32_t rssi_raw = kNoSignal;
+        if (!probe(freq, config, env, &rssi_raw)) {
+            rssi_raw = kNoSignal;
         }
 
         if (have_prev
-                && prev_rssi >= config.threshold_dbm
+                && prev_rssi >= config.threshold_raw
                 && prev_rssi >= prev2_rssi
-                && prev_rssi > rssi_dbm) {
+                && prev_rssi > rssi_raw) {
             collector->add(static_cast<int>(prev_freq));
         }
 
         prev2_rssi = prev_rssi;
-        prev_rssi = rssi_dbm;
+        prev_rssi = rssi_raw;
         prev_freq = freq;
         have_prev = true;
     }
 
     // Judge the final channel against a virtual right neighbor at -inf.
-    if (have_prev && prev_rssi >= config.threshold_dbm && prev_rssi >= prev2_rssi) {
+    if (have_prev && prev_rssi >= config.threshold_raw && prev_rssi >= prev2_rssi) {
         collector->add(static_cast<int>(prev_freq));
     }
 
@@ -106,11 +111,39 @@ StepScanOutcome run_seek(int direction, const StepScanConfig &config, const Step
             return outcome;
         }
 
-        int32_t rssi_dbm = 0;
-        if (probe(static_cast<uint32_t>(next), config, env, &rssi_dbm) && rssi_dbm >= config.threshold_dbm) {
+        int32_t hit_rssi = 0;
+        if (probe(static_cast<uint32_t>(next), config, env, &hit_rssi)) {
+            // The first hit is often a shoulder of a wider carrier. Walk the
+            // next two channels in the seek direction and keep the strongest
+            // (MIUI's seek does the same) so we land on the peak, not a
+            // side-lobe.
+            uint32_t best = static_cast<uint32_t>(next);
+            int32_t best_rssi = hit_rssi;
+            for (int i = 1; i <= 2; i++) {
+                const int64_t shoulder = static_cast<int64_t>(next) + static_cast<int64_t>(step) * i;
+                if (shoulder < config.lower_khz || shoulder > config.upper_khz) {
+                    break;
+                }
+                if (scan_cancelled(env)) {
+                    outcome.status = StepScanStatus::kCancelled;
+                    return outcome;
+                }
+                if (scan_expired(config, env)) {
+                    outcome.status = StepScanStatus::kAborted;
+                    return outcome;
+                }
+                int32_t shoulder_rssi = 0;
+                if (!probe(static_cast<uint32_t>(shoulder), config, env, &shoulder_rssi)
+                        || shoulder_rssi <= best_rssi) {
+                    break;
+                }
+                best = static_cast<uint32_t>(shoulder);
+                best_rssi = shoulder_rssi;
+            }
+
             outcome.status = StepScanStatus::kFound;
-            outcome.found_frequency_khz = static_cast<uint32_t>(next);
-            outcome.resume_frequency_khz = outcome.found_frequency_khz;
+            outcome.found_frequency_khz = best;
+            outcome.resume_frequency_khz = best;
             return outcome;
         }
 
@@ -128,7 +161,7 @@ StepScanOutcome step_scan_run(
     StepScanOutcome invalid;
     invalid.status = StepScanStatus::kAborted;
     invalid.resume_frequency_khz = config.start_khz;
-    if (env.tune == nullptr || env.rssi_dbm == nullptr || config.step_khz <= 0
+    if (env.probe == nullptr || config.step_khz <= 0
             || config.lower_khz > config.upper_khz) {
         return invalid;
     }

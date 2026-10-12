@@ -586,12 +586,22 @@ space: 1/2/5 = 100/200/50 kHz. Driver deemphasis is inverted relative to
 inversion.
 
 There is **no hardware seek/scan**: `FM_IOCTL_SEEK`/`SCAN` return -1 on this
-driver. Both are implemented in userspace by stepping TUNE + GETRSSI across
-the grid (`mtk/step_scan.*`, host-tested with injected callbacks). Station
-detection uses a threshold (calibrated on cannon to -88 dBm: audible stations
-land at -74..-88, interference haze starts at -90) plus a local-maximum rule
-so one bleeding station lists once. Scans carry a deadline, unlike both
-Qualcomm backends.
+driver. Both are implemented in userspace, but each channel is probed with a
+single blocking `FM_IOCTL_SOFT_MUTE_TUNE` (`_IOWR(0xf5, 63, ...)`, 12-byte
+`fm_softmute_tune_t`: raw CQI `rssi`, 10 kHz-unit `freq` IN, kernel-judged
+`valid` OUT) — the same path MIUI's `libfmjni` uses. Inside that ioctl the
+firmware tunes, samples, and judges the channel against seven metrics
+(RSSI/PAMD/MR/ATDC/PRX/ATDEV/SMG from `fm_cust.cfg` + compiled defaults), so
+there is no userspace settle wait. The returned `rssi` is the raw 10-bit CQI
+scale, NOT the GETRSSI dBm scale (GETRSSI multiplies by 6/16; our -88 dBm
+floor is about -235 raw). `step_scan` accepts a channel only when the kernel
+`valid` is set AND the raw level clears our own `kScanThresholdCqiRaw` floor;
+a failed ioctl writes nothing back, so it counts as no reading. Seek
+additionally walks up to two further channels in the seek direction and keeps
+the strongest (MIUI's behavior), landing on the carrier peak instead of a
+side-lobe. Measured on cannon: ~40 ms per channel, ~8.3 s for the full EU
+band (206 channels, 17 stations), ~330 ms for a three-channel seek. Scans
+carry a deadline, unlike both Qualcomm backends.
 
 GETRSSI returns a dBm-like signed value directly (no Qualcomm byte decode).
 `GETMONOSTERO` is the *setting* readback, not reception state; stereo
