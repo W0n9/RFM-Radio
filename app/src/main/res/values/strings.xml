@@ -3,6 +3,15 @@
 	<string name="nil" translatable="false">null</string>
 	<string name="main_activity_label" translatable="false">RFM Radio</string>
 	<string name="toggle_play_pause">Play</string>
+	<string name="brand_mark" translatable="false">RFM</string>
+	<string name="rec_capsule_label" translatable="false">REC</string>
+	<string name="freq_unit_mhz" translatable="false">MHz</string>
+	<string name="seek_label" translatable="false">SEEK</string>
+	<string name="seek_backward_symbol" translatable="false">◂◂</string>
+	<string name="seek_forward_symbol" translatable="false">▸▸</string>
+	<string name="menu_more">More options</string>
+	<string name="settings_cd">Settings</string>
+	<string name="frequency_slider_cd">Frequency slider</string>
 	<string name="jump_up">Jump up</string>
 	<string name="seek_up">Seek up</string>
 	<string name="jump_down">Jump down</string>
