@@ -109,7 +109,7 @@
 	<string name="popup_station_reorder">Изменить порядок</string>
 	<string name="toolbar_favorite_title">Избранное</string>
 	<string name="main_warning_pref_changed_title">Внимание!</string>
-	<string name="main_warning_pref_changed_content">Для применения некоторых настроек, которые Вы изменили, нужно полностью перезапустить приложение:\n1. Остановить тюнер (кнопка выключения наверху)\n2. Закрыть и смахнуть приложение из мультизадачности\n3. Запустить приложение.</string>
+	<string name="main_warning_pref_changed_content">Для применения некоторых настроек, которые Вы изменили, нужно полностью перезапустить приложение:\n1. Остановить тюнер (кнопка питания в центре экрана)\n2. Закрыть и смахнуть приложение из мультизадачности\n3. Запустить приложение.</string>
 	<string name="pref_version_check_progress">Проверка обновлений…</string>
 	<string name="pref_version_check_fresh_title">Всё хорошо!</string>
 	<string name="pref_version_check_fresh_content">Установлена последняя версия. Обновление не требуется.</string>

@@ -115,7 +115,7 @@
 	<string name="record_save_failed">無法儲存錄音。</string>
 	<string name="toast_record_ended">錄音已儲存為 %1$s\n長度：%3$s (%2$.1f MB)</string>
 	<string name="main_warning_pref_changed_title">注意！</string>
-	<string name="main_warning_pref_changed_content">部分設定變更後需要完全重新啟動應用程式才能生效：\n1. 停止調諧器（頂端的關閉按鈕）\n2. 關閉應用程式並從多工畫面滑掉\n3. 重新啟動應用程式。</string>
+	<string name="main_warning_pref_changed_content">部分設定變更後需要完全重新啟動應用程式才能生效：\n1. 停止調諧器（螢幕中央的電源按鈕）\n2. 關閉應用程式並從多工畫面滑掉\n3. 重新啟動應用程式。</string>
 	<string name="pref_notification_seek_by_favorites">在收藏間切換</string>
 	<string name="pref_notification_seek_by_favorites_enabled">使用通知中的箭頭跳至上一個/下一個收藏電台</string>
 	<string name="pref_notification_seek_by_favorites_disabled">使用通知中的箭頭搜尋上一個/下一個電台</string>

@@ -32,7 +32,8 @@
 		</activity>
 		<activity
 				android:name=".activity.SettingsActivity"
-				android:label="@string/pref_activity_title"/>
+				android:label="@string/pref_activity_title"
+				android:screenOrientation="portrait"/>
 			<activity
 				android:name=".activity.FavoriteListsActivity"/>
 		<activity
