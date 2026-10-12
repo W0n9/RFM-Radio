@@ -1,4 +1,6 @@
-<resources>
-	<string name="app_name" translatable="false">[DEV] RFM Radio</string>
-	<string name="main_activity_label" translatable="false">[DEV] RFM Radio</string>
+<resources xmlns:tools="http://schemas.android.com/tools">
+	<!-- Needed despite debug/res/values doing the same: main/res/values-pl defines app_name too,
+	     and for a Polish device that locale-specific resource outranks the debug default. -->
+	<string name="app_name" translatable="false" tools:ignore="Untranslatable">[DEV] RFM Radio</string>
+	<string name="main_activity_label" translatable="false" tools:ignore="Untranslatable">[DEV] RFM Radio</string>
 </resources>
