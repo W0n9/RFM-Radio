@@ -6,7 +6,6 @@
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
 		android:background="@color/c_bg"
-		android:fitsSystemWindows="true"
 		tools:context=".activity.MainActivity">
 
 	<!-- ===================== Top bar (C language: no app bar) ===================== -->

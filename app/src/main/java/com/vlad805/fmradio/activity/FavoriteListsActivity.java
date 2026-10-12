@@ -24,6 +24,7 @@ import com.vlad805.fmradio.C;
 import com.vlad805.fmradio.R;
 import com.vlad805.fmradio.Utils;
 import com.vlad805.fmradio.controller.FavoriteController;
+import com.vlad805.fmradio.helper.EdgeToEdgeHelper;
 import com.vlad805.fmradio.helper.EditTextDialog;
 import com.vlad805.fmradio.helper.Toast;
 
@@ -86,6 +87,7 @@ public class FavoriteListsActivity extends AppCompatActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_favorite_lists);
+		EdgeToEdgeHelper.apply(this);
 
 		mToast = Toast.create(this);
 		mController = new FavoriteController(this);

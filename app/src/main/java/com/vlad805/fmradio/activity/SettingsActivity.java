@@ -13,12 +13,14 @@ import com.vlad805.fmradio.C;
 import com.vlad805.fmradio.R;
 import com.vlad805.fmradio.Utils;
 import com.vlad805.fmradio.fragments.PreferencesFragment;
+import com.vlad805.fmradio.helper.EdgeToEdgeHelper;
 
 public class SettingsActivity extends AppCompatActivity {
 	@Override
 	protected void onCreate(final Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.settings_activity);
+		EdgeToEdgeHelper.apply(this);
 		setSupportActionBar(findViewById(R.id.settings_toolbar));
 		getSupportFragmentManager()
 				.beginTransaction()
