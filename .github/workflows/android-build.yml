@@ -34,7 +34,22 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
+      - name: Cache Android SDK components
+        id: sdk-cache
+        uses: actions/cache@v6
+        with:
+          # Only the components that actually get downloaded; the runner image
+          # ships the platforms, build-tools and platform-tools we pin.
+          path: |
+            /usr/local/lib/android/sdk/licenses
+            /usr/local/lib/android/sdk/cmake/3.22.1
+            /usr/local/lib/android/sdk/ndk/29.0.14033849
+          # The install list lives in this file, so hashing the workflow keeps
+          # the cache key and the component list in lockstep.
+          key: android-sdk-${{ runner.os }}-${{ hashFiles('.github/workflows/android-build.yml') }}
+
       - name: Install Android SDK components
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
         run: |
           yes | sdkmanager --licenses >/dev/null
           sdkmanager \
