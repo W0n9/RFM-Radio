@@ -6,20 +6,23 @@ import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.pm.PackageManager;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.os.Bundle;
 import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.TextView;
+
 import androidx.annotation.IdRes;
+import androidx.annotation.StringRes;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -27,6 +30,7 @@ import com.vlad805.fmradio.C;
 import com.vlad805.fmradio.R;
 import com.vlad805.fmradio.Storage;
 import com.vlad805.fmradio.Utils;
+import com.vlad805.fmradio.UtilsLocalization;
 import com.vlad805.fmradio.controller.FavoriteController;
 import com.vlad805.fmradio.controller.RadioController;
 import com.vlad805.fmradio.controller.RadioState;
@@ -35,19 +39,17 @@ import com.vlad805.fmradio.controller.TunerStatus;
 import com.vlad805.fmradio.enums.Direction;
 import com.vlad805.fmradio.enums.PowerMode;
 import com.vlad805.fmradio.enums.TunerDriver;
-import com.vlad805.fmradio.helper.TunerDriverDetector;
 import com.vlad805.fmradio.helper.ProgressDialog;
 import com.vlad805.fmradio.helper.Toast;
+import com.vlad805.fmradio.helper.TunerDriverDetector;
 import com.vlad805.fmradio.models.FavoriteStation;
 import com.vlad805.fmradio.preferences.BandUtils;
 import com.vlad805.fmradio.service.FMService;
-import com.vlad805.fmradio.view.FavoritesView;
-import com.vlad805.fmradio.view.FrequencyBarView;
-import com.vlad805.fmradio.view.RadioUIView;
+import com.vlad805.fmradio.view.BlobView;
+import com.vlad805.fmradio.view.FavoriteChipsView;
+import com.vlad805.fmradio.view.FrequencySliderView;
+import com.vlad805.fmradio.view.RecordCapsuleView;
 import com.vlad805.fmradio.view.SignalStrengthView;
-
-import static com.vlad805.fmradio.Utils.alert;
-import static com.vlad805.fmradio.Utils.getTimeStringBySeconds;
 
 import net.grandcentrix.tray.AppPreferences;
 
@@ -55,12 +57,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static com.vlad805.fmradio.Utils.alert;
+import static com.vlad805.fmradio.Utils.getTimeStringBySeconds;
+
 @SuppressLint("NonConstantResourceId")
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, RadioStateUpdater.TunerStateListener {
     private Toast mToast;
-    private RadioUIView mFrequencyInfo;
-    private FrequencyBarView mSeek;
-    private FavoritesView mFavoritesView;
+    private FrequencySliderView mSlider;
+    private FavoriteChipsView mFavoritesView;
+    private BlobView mBlob;
+    private RecordCapsuleView mRecCapsule;
 
     private RadioController mRadioController;
     private FavoriteController mFavoriteController;
@@ -70,21 +76,41 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private ImageButton mCtlToggle;
 
+    private TextView mFrequencyText;
+    private TextView mPs;
+    private TextView mRt;
+    private TextView mPty;
+    private TextView mPi;
     private TextView mViewStereoMode;
+    private TextView mBandMinLabel;
+    private TextView mBandMaxLabel;
     private SignalStrengthView mSignalStrength;
 
-    private TextView mRecordDuration;
+    /** Frequency formatting precision, derived from the spacing preference. */
+    private int mFrequencyPrecision = 1;
+    private int mRegion;
+
+    private boolean mStatusShown;
+    private String mLastPsText = "";
 
     private RadioState mLastState;
 
-    private MenuItem mRecordDurationMenuItem;
-    private MenuItem mRecordMenuItem;
-    private MenuItem mSpeakerMenuItem;
+    private final Handler mRecHandler = new Handler(Looper.getMainLooper());
+    private final Runnable mRecTicker = new Runnable() {
+        @Override
+        public void run() {
+            if (mLastState != null && mLastState.isRecording()) {
+                mRecCapsule.setDurationText(getTimeStringBySeconds(mLastState.getRecordingDuration()));
+                mRecHandler.postDelayed(this, 1000);
+            }
+        }
+    };
 
     private static final int REQUEST_CODE_FAVORITES_OPENED = 1048;
     private static final int REQUEST_CODE_SETTINGS_CHANGED = 1050;
     private static final int REQUEST_CODE_RECORD_PERMISSIONS = 1051;
     private static final int REQUEST_CODE_PLAYBACK_PERMISSION = 1052;
+    private static final int REQUEST_CODE_NOTIFICATION_PERMISSION = 1053;
     private boolean mPendingRecordStart = false;
     private boolean mRecordPermissionsRequested = false;
     private boolean mPendingPlaybackStart = false;
@@ -112,8 +138,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         mToast = Toast.create(this);
 
-        setSupportActionBar(findViewById(R.id.main_toolbar));
-
         mPreferences = new AppPreferences(this);
         mRadioController = new RadioController(this);
         mFavoriteController = new FavoriteController(this);
@@ -129,21 +153,33 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      * Activity handle, UI setup
      */
     private void initUserInterface() {
-        mFrequencyInfo = findViewById(R.id.frequency_info);
+        mBlob = findViewById(R.id.blob);
+        mRecCapsule = findViewById(R.id.rec_capsule);
+        mFrequencyText = findViewById(R.id.frequency_text);
+        mPs = findViewById(R.id.ps_text);
+        mRt = findViewById(R.id.rt_text);
+        mPty = findViewById(R.id.pty_chip);
+        mPi = findViewById(R.id.pi_text);
+        mBandMinLabel = findViewById(R.id.band_min_label);
+        mBandMaxLabel = findViewById(R.id.band_max_label);
+
+        // Marquee scrolls only while the TextView is selected.
+        mRt.setSelected(true);
 
         mFavoritesView = findViewById(R.id.favorite_list);
+        mFavoritesView.setControllers(mFavoriteController, mRadioController);
         mFavoritesView.setOnFavoritesChangedListener(() -> {
             updateFavoriteFrequencyMarkers();
         });
-        mFavoritesView.setOnErrorListener(message -> {
-            mToast.text(message).show();
+        mFavoritesView.setOnListsClickListener(() -> {
+            startActivityForResult(new Intent(this, FavoriteListsActivity.class), REQUEST_CODE_FAVORITES_OPENED);
         });
 
-        mSeek = findViewById(R.id.frequency_seek);
+        mSlider = findViewById(R.id.frequency_slider);
 
         final int kHz = Storage.getInstance(this).getInt(C.PrefKey.LAST_FREQUENCY, C.PrefDefaultValue.LAST_FREQUENCY);
-        mFrequencyInfo.setFrequency(kHz);
-        mSeek.setFrequency(kHz);
+        setFrequencyText(kHz);
+        mSlider.setFrequency(kHz);
         mFavoritesView.setActiveFrequency(kHz);
         mFavoritesView.reload(false);
         updateFavoriteFrequencyMarkers();
@@ -163,7 +199,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         } else {
             setEnabledUi(false);
-            mFrequencyInfo.showStatus(R.string.status_tuner_stopped);
+            showStatus(R.string.status_tuner_stopped);
         }
     }
 
@@ -171,21 +207,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onResume() {
         super.onResume();
 
+        ensureNotificationPermission();
         reloadPreferences();
         mFavoritesView.reload(false);
     }
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
+        mRecHandler.removeCallbacks(mRecTicker);
 
         if (mRadioController != null) {
             mRadioController.unregisterForUpdates();
+
+            if (Storage.getPrefBoolean(this, C.PrefKey.TUNER_POWER_MODE, false)) {
+                mRadioController.setPowerMode(PowerMode.LOW);
+            }
         }
 
-        if (mRadioController != null && Storage.getPrefBoolean(this, C.PrefKey.TUNER_POWER_MODE, false)) {
-            mRadioController.setPowerMode(PowerMode.LOW);
-        }
+        super.onDestroy();
     }
 
     @Override
@@ -252,7 +291,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 R.id.ctl_go_up,
                 R.id.ctl_seek_down,
                 R.id.ctl_seek_up,
-                R.id.favorite_button
+                R.id.settings_button,
+                R.id.overflow_button,
+                R.id.rec_capsule
         };
 
         for (int id : ids) {
@@ -286,12 +327,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             mRadioController.jump(Direction.UP);
         } else if (id == R.id.ctl_seek_down) {
             mRadioController.hwSeek(Direction.DOWN);
-            mFrequencyInfo.showStatus(R.string.status_searching_station);
+            showStatus(R.string.status_searching_station);
         } else if (id == R.id.ctl_seek_up) {
             mRadioController.hwSeek(Direction.UP);
-            mFrequencyInfo.showStatus(R.string.status_searching_station);
-        } else if (id == R.id.favorite_button) {
-            startActivityForResult(new Intent(this, FavoriteListsActivity.class), REQUEST_CODE_FAVORITES_OPENED);
+            showStatus(R.string.status_searching_station);
+        } else if (id == R.id.settings_button) {
+            startActivityForResult(new Intent(this, SettingsActivity.class), REQUEST_CODE_SETTINGS_CHANGED);
+        } else if (id == R.id.overflow_button) {
+            showOverflowMenu();
+        } else if (id == R.id.rec_capsule) {
+            toggleRecording();
         }
     }
 
@@ -300,62 +345,72 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mRadioController.setup();
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(final Menu menu) {
-        getMenuInflater().inflate(R.menu.main, menu);
-        mRecordDurationMenuItem = menu.findItem(R.id.menu_record_duration);
-        mRecordMenuItem = menu.findItem(R.id.menu_record);
-        mSpeakerMenuItem = menu.findItem(R.id.menu_speaker);
-        mRecordDuration = (TextView) mRecordDurationMenuItem.getActionView();
+    /**
+     * The C-air top bar has no app bar, so the former toolbar menu becomes a
+     * popup anchored at the overflow button: scan / speaker / about.
+     */
+    private void showOverflowMenu() {
+        final PopupMenu popup = new PopupMenu(this, findViewById(R.id.overflow_button));
+        popup.getMenu().add(0, MENU_ID_SCAN, 0, R.string.menu_scan_stations);
+        popup.getMenu().add(0, MENU_ID_SPEAKER, 1, R.string.menu_speaker).setCheckable(true);
+        popup.getMenu().add(0, MENU_ID_ABOUT, 2, R.string.menu_about);
+
+        final boolean tunerEnabled = mLastState != null && TunerStatus.ENABLED.equals(mLastState.getStatus());
+        popup.getMenu().findItem(MENU_ID_SCAN).setEnabled(tunerEnabled);
+        popup.getMenu().findItem(MENU_ID_SPEAKER).setEnabled(tunerEnabled);
         if (mLastState != null) {
-            updateMenuState();
-            updateRecordingUi(mLastState);
+            popup.getMenu().findItem(MENU_ID_SPEAKER).setChecked(mLastState.isForceSpeaker());
         }
-        return super.onCreateOptionsMenu(menu);
+
+        popup.setOnMenuItemClickListener(item -> {
+            switch (item.getItemId()) {
+                case MENU_ID_SCAN:
+                    showSearchDialog();
+                    return true;
+                case MENU_ID_SPEAKER:
+                    startService(new Intent(this, FMService.class).setAction(C.Command.SPEAKER_STATE));
+                    return true;
+                case MENU_ID_ABOUT:
+                    startActivity(new Intent(this, AboutActivity.class));
+                    return true;
+                default:
+                    return false;
+            }
+        });
+        popup.show();
     }
 
-    @Override
-    public boolean onOptionsItemSelected(final MenuItem item) {
-        int itemId = item.getItemId();
+    private static final int MENU_ID_SCAN = 1;
+    private static final int MENU_ID_SPEAKER = 2;
+    private static final int MENU_ID_ABOUT = 3;
 
-        if (itemId == R.id.menu_about) {
-            startActivity(new Intent(this, AboutActivity.class));
-        } else if (itemId == R.id.menu_settings) {
-            startActivityForResult(new Intent(this, SettingsActivity.class), REQUEST_CODE_SETTINGS_CHANGED);
-        } else if (itemId == R.id.menu_scan_stations) {
-            showSearchDialog();
-        } else if (itemId == R.id.menu_record) {
-            if (mRadioController.getState().isRecording()) {
-                mRadioController.record(false);
-                return super.onOptionsItemSelected(item);
-            }
-
-            if (hasRecordingPermissions()) {
-                mRadioController.record(true);
-            } else if (shouldOpenRecordingPermissionSettings()) {
-                showRecordingPermissionSettingsDialog();
-            } else {
-                mPendingRecordStart = true;
-                mRecordPermissionsRequested = true;
-
-                // Android 10+ writes recordings via MediaStore into Music/RFM-Recordings,
-                // so only microphone access is needed. Older releases still use direct File I/O.
-                final String[] permissions = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
-                        ? new String[]{
-                                Manifest.permission.RECORD_AUDIO
-                        }
-                        : new String[]{
-                                Manifest.permission.RECORD_AUDIO,
-                                Manifest.permission.WRITE_EXTERNAL_STORAGE
-                        };
-
-                ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE_RECORD_PERMISSIONS);
-            }
-        } else if (itemId == R.id.menu_speaker) {
-            startService(new Intent(this, FMService.class).setAction(C.Command.SPEAKER_STATE));
+    private void toggleRecording() {
+        if (mRadioController.getState().isRecording()) {
+            mRadioController.record(false);
+            return;
         }
 
-        return super.onOptionsItemSelected(item);
+        if (hasRecordingPermissions()) {
+            mRadioController.record(true);
+        } else if (shouldOpenRecordingPermissionSettings()) {
+            showRecordingPermissionSettingsDialog();
+        } else {
+            mPendingRecordStart = true;
+            mRecordPermissionsRequested = true;
+
+            // Android 10+ writes recordings via MediaStore into Music/RFM-Recordings,
+            // so only microphone access is needed. Older releases still use direct File I/O.
+            final String[] permissions = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                    ? new String[]{
+                            Manifest.permission.RECORD_AUDIO
+                    }
+                    : new String[]{
+                            Manifest.permission.RECORD_AUDIO,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    };
+
+            ActivityCompat.requestPermissions(this, permissions, REQUEST_CODE_RECORD_PERMISSIONS);
+        }
     }
 
     private void showSearchDialog() {
@@ -478,6 +533,27 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return false;
     }
 
+    /**
+     * Android 13 mutes all notification channels of new installs until POST_NOTIFICATIONS is
+     * granted. The FM service keeps running either way, so a refusal just hides the ongoing
+     * media notification — ask once per resume where it is missing, without nagging.
+     */
+    private void ensureNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return;
+        }
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
+        ActivityCompat.requestPermissions(
+                this,
+                new String[] { Manifest.permission.POST_NOTIFICATIONS },
+                REQUEST_CODE_NOTIFICATION_PERMISSION
+        );
+    }
+
     private boolean shouldOpenRecordingPermissionSettings() {
         if (!mRecordPermissionsRequested) {
             return false;
@@ -506,7 +582,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (!mPlaybackPermissionRequested) {
             return false;
         }
-
         return !ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.RECORD_AUDIO);
     }
 
@@ -529,16 +604,23 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         final int regionPref = mPreferences.getInt(C.PrefKey.TUNER_REGION, C.PrefDefaultValue.TUNER_REGION);
         final int spacingPref = mPreferences.getInt(C.PrefKey.TUNER_SPACING, C.PrefDefaultValue.TUNER_SPACING);
 
+        mRegion = regionPref;
+        mFrequencyPrecision = spacingPref == BandUtils.SPACING_50kHz ? 2 : 1;
+
         final BandUtils.BandLimit bandLimit = BandUtils.getBandLimit(regionPref);
         final int spacing = BandUtils.getSpacing(spacingPref);
 
-        mSeek.setMinMaxValue(bandLimit.lower, bandLimit.upper, spacing);
-        mSeek.setOnFrequencyChangeListener(mOnFrequencyChanged);
+        mSlider.setMinMaxValue(bandLimit.lower, bandLimit.upper, spacing);
+        mSlider.setOnFrequencyChangeListener(mOnFrequencyChanged);
+
+        mBandMinLabel.setText(Utils.getMHz(bandLimit.lower, mFrequencyPrecision));
+        mBandMaxLabel.setText(Utils.getMHz(bandLimit.upper, mFrequencyPrecision));
+
         updateFavoriteFrequencyMarkers();
     }
 
     private void updateFavoriteFrequencyMarkers() {
-        if (mFavoritesView == null || mSeek == null) {
+        if (mFavoritesView == null || mSlider == null) {
             return;
         }
 
@@ -546,10 +628,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         for (final FavoriteStation station : mFavoritesView.getStationsInCurrentList()) {
             frequencies.add(station.getFrequency());
         }
-        mSeek.setFavoriteFrequencies(frequencies);
+        mSlider.setFavoriteFrequencies(frequencies);
     }
 
-    private final FrequencyBarView.OnFrequencyChangedListener mOnFrequencyChanged = new FrequencyBarView.OnFrequencyChangedListener() {
+    private final FrequencySliderView.OnFrequencyChangedListener mOnFrequencyChanged = new FrequencySliderView.OnFrequencyChangedListener() {
         @Override
         public void onChanged(final int kHz) {
             if (mRadioController.getState().getFrequency() == kHz) {
@@ -586,14 +668,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
 
         if ((mode & RadioStateUpdater.SET_FREQUENCY) > 0) {
-            mFrequencyInfo.hideStatus();
+            hideStatus();
 
-            mFrequencyInfo.setFrequency(state.getFrequency());
+            setFrequencyText(state.getFrequency());
 
-            mSeek.setFrequency(state.getFrequency());
+            mSlider.setFrequency(state.getFrequency());
             mFavoritesView.setActiveFrequency(state.getFrequency());
 
-            mFrequencyInfo.setRadioState(state);
+            updateNowPlaying(state);
         }
 
         if (
@@ -603,7 +685,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             (mode & RadioStateUpdater.SET_PTY) > 0 ||
             (mode & RadioStateUpdater.SET_COUNTRY) > 0
         ) {
-            mFrequencyInfo.setRadioState(state);
+            updateNowPlaying(state);
         }
 
         if ((mode & RadioStateUpdater.SET_STEREO) > 0) {
@@ -621,48 +703,44 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             updateRecordingUi(state);
         }
 
-        if ((mode & RadioStateUpdater.SET_SPEAKER) > 0 || (mode & RadioStateUpdater.SET_INITIAL) > 0) {
-            final boolean isSpeaker = state.isForceSpeaker();
-
-            if (mSpeakerMenuItem != null) {
-                mSpeakerMenuItem.setChecked(isSpeaker);
-            }
-        }
+        // SET_SPEAKER needs no live widget: the overflow popup reads mLastState at open.
     }
 
     private void handleChangingState(final TunerStatus status) {
+        mBlob.setPlaying(status == TunerStatus.ENABLED);
+
         switch (status) {
             case IDLE: {
                 setEnabledUi(false);
-                mFrequencyInfo.clearMetadata();
-                mFrequencyInfo.showStatus(R.string.status_tuner_stopped);
+                clearMetadata();
+                showStatus(R.string.status_tuner_stopped);
                 setPlayingMainPlayButton(false);
                 setEnabledToggleButton(true);
                 break;
             }
 
             case INSTALLING: {
-                mFrequencyInfo.showStatus(R.string.status_installing);
+                showStatus(R.string.status_installing);
                 setEnabledToggleButton(false);
                 break;
             }
 
             case INSTALLED:
             case LAUNCHED: {
-                mFrequencyInfo.hideStatus();
+                hideStatus();
                 setEnabledToggleButton(false);
                 break;
             }
 
             case LAUNCHING: {
-                mFrequencyInfo.showStatus(R.string.status_launching);
+                showStatus(R.string.status_launching);
                 setEnabledToggleButton(false);
                 break;
             }
 
             case ROOT_ACCESS_DENIED: {
-                mFrequencyInfo.clearMetadata();
-                mFrequencyInfo.showStatus(R.string.status_tuner_stopped);
+                clearMetadata();
+                showStatus(R.string.status_tuner_stopped);
                 setEnabledToggleButton(false);
 
                 Utils.alert(
@@ -675,8 +753,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
 
             case FATAL_ERROR: {
-                mFrequencyInfo.clearMetadata();
-                mFrequencyInfo.showStatus(R.string.status_tuner_stopped);
+                clearMetadata();
+                showStatus(R.string.status_tuner_stopped);
                 setEnabledToggleButton(false);
 
                 Utils.alert(
@@ -689,7 +767,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
 
             case ENABLING: {
-                mFrequencyInfo.hideStatus();
+                hideStatus();
                 setEnabledToggleButton(false);
                 break;
             }
@@ -701,7 +779,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             case ENABLED: {
                 setEnabledUi(true);
-                mFrequencyInfo.hideStatus();
+                hideStatus();
                 setEnabledToggleButton(true);
                 setPlayingMainPlayButton(true);
                 break;
@@ -723,14 +801,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 R.id.ctl_go_up,
                 R.id.ctl_seek_down,
                 R.id.ctl_seek_up,
-                R.id.frequency_mhz,
-                R.id.frequency_ps,
-                R.id.frequency_pi,
-                R.id.frequency_rt,
-                R.id.frequency_pty,
-                R.id.frequency_seek,
-                R.id.stereo_mono,
-                R.id.signal_strength,
+                R.id.frequency_slider,
+                R.id.freq_overlay,
+                R.id.now_playing,
+                R.id.rec_capsule,
                 R.id.favorite_list
         };
 
@@ -739,40 +813,66 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             v.setAlpha(state ? 1f : .5f);
             v.setEnabled(state);
         }
-
-        updateMenuState();
-    }
-
-    private void updateMenuState() {
-        if (mRecordMenuItem == null || mSpeakerMenuItem == null) {
-            return;
-        }
-
-        final boolean state = TunerStatus.ENABLED.equals(mLastState.getStatus());
-
-        mRecordMenuItem.setEnabled(state);
-        mSpeakerMenuItem.setEnabled(state);
-        mSpeakerMenuItem.setChecked(mLastState.isForceSpeaker());
     }
 
     private void updateRecordingUi(final RadioState state) {
-        if (
-                mRecordDurationMenuItem == null ||
-                mRecordMenuItem == null
-        ) {
-            return;
-        }
-
         final boolean isRecording = state.isRecording();
-        mRecordDurationMenuItem.setVisible(isRecording);
-        mRecordMenuItem.setIcon(isRecording
-                ? R.drawable.ic_led_on
-                : R.drawable.ic_led_off
-        );
+        mRecCapsule.setRecording(isRecording);
 
-        if (isRecording && mRecordDuration != null) {
-            mRecordDuration.setText(getTimeStringBySeconds(state.getRecordingDuration()));
+        mRecHandler.removeCallbacks(mRecTicker);
+        if (isRecording) {
+            mRecCapsule.setDurationText(getTimeStringBySeconds(state.getRecordingDuration()));
+            mRecHandler.postDelayed(mRecTicker, 1000);
         }
     }
 
+    /* ===================== Now-playing helpers (absorbed from RadioUIView) ===================== */
+
+    private void setFrequencyText(final int kHz) {
+        mFrequencyText.setText(Utils.getMHz(kHz, mFrequencyPrecision));
+    }
+
+    private void updateNowPlaying(final RadioState state) {
+        final String ps = state.getPs() != null ? state.getPs() : "";
+        mLastPsText = ps.isEmpty()
+                ? Utils.getMHz(state.getFrequency(), mFrequencyPrecision)
+                : ps;
+        if (!mStatusShown) {
+            mPs.setText(mLastPsText);
+        }
+
+        mRt.setText(state.getRt() != null ? state.getRt() : "");
+
+        final String pty = UtilsLocalization.getProgramType(state.getPty(), mRegion);
+        mPty.setText(pty);
+        mPty.setVisibility(pty.isEmpty() ? View.GONE : View.VISIBLE);
+
+        final String pi = state.getPi() != null ? state.getPi() : "";
+        final String country = state.getCountry() != null ? state.getCountry() : "";
+        mPi.setText(country.isEmpty() || pi.isEmpty() ? pi : country + ", " + pi);
+        mPi.setVisibility(mPi.getText().length() == 0 ? View.GONE : View.VISIBLE);
+    }
+
+    /** Status text borrows the PS slot, dimmed, until hideStatus() restores the station name. */
+    private void showStatus(@StringRes final int stringRes) {
+        mStatusShown = true;
+        mPs.setText(stringRes);
+        mPs.setAlpha(.55f);
+    }
+
+    private void hideStatus() {
+        mStatusShown = false;
+        mPs.setAlpha(1f);
+        mPs.setText(mLastPsText);
+    }
+
+    private void clearMetadata() {
+        mLastPsText = "";
+        mPs.setText("");
+        mRt.setText("");
+        mPty.setText("");
+        mPty.setVisibility(View.GONE);
+        mPi.setText("");
+        mPi.setVisibility(View.GONE);
+    }
 }

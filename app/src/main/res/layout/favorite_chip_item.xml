@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+		xmlns:tools="http://schemas.android.com/tools"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginEnd="8dp"
+		android:background="@drawable/chip_bg"
+		android:baselineAligned="true"
+		android:gravity="center_vertical"
+		android:orientation="horizontal"
+		android:paddingStart="15dp"
+		android:paddingTop="9dp"
+		android:paddingEnd="15dp"
+		android:paddingBottom="9dp">
+
+	<TextView
+			android:id="@+id/chip_frequency"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:duplicateParentState="true"
+			android:fontFeatureSettings="tnum"
+			android:textColor="@color/chip_text"
+			android:textSize="13sp"
+			tools:text="106.3" />
+
+	<TextView
+			android:id="@+id/chip_name"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginStart="6dp"
+			android:duplicateParentState="true"
+			android:ellipsize="end"
+			android:maxWidth="96dp"
+			android:singleLine="true"
+			android:textColor="@color/c_ink_faint"
+			android:textSize="10.5sp"
+			tools:text="Record" />
+</LinearLayout>

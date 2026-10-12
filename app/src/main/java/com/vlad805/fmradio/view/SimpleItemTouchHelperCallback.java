@@ -1,8 +1,9 @@
 package com.vlad805.fmradio.view;
 
 import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 /**
@@ -42,6 +43,9 @@ public class SimpleItemTouchHelperCallback extends ItemTouchHelper.Callback {
 		int dragFlags;
 		if (recyclerView.getLayoutManager() instanceof GridLayoutManager) {
 			dragFlags = ItemTouchHelper.UP | ItemTouchHelper.DOWN | ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT;
+		} else if (recyclerView.getLayoutManager() instanceof LinearLayoutManager
+				&& ((LinearLayoutManager) recyclerView.getLayoutManager()).getOrientation() == LinearLayoutManager.HORIZONTAL) {
+			dragFlags = ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT;
 		} else {
 			dragFlags = ItemTouchHelper.UP | ItemTouchHelper.DOWN;
 		}

@@ -1,6 +1,7 @@
 package com.vlad805.fmradio.fragments;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -87,6 +88,7 @@ public class PreferencesFragment extends PreferenceFragmentCompat implements Pre
 		setListProviderAndEntries(region, Vars.sTunerRegions);
 		region.setOnPreferenceChangeListener((preference, newValue) -> {
 			mPreferences.put(C.PrefKey.TUNER_REGION, Utils.parseInt((String) newValue));
+			markRestartRequired();
 			return true;
 		});
 		category.addPreference(region);
@@ -98,6 +100,7 @@ public class PreferencesFragment extends PreferenceFragmentCompat implements Pre
 		setListProviderAndEntries(spacing, Vars.sTunerSpacing);
 		spacing.setOnPreferenceChangeListener((preference, newValue) -> {
 			mPreferences.put(C.PrefKey.TUNER_SPACING, Utils.parseInt((String) newValue));
+			markRestartRequired();
 			return true;
 		});
 		category.addPreference(spacing);
@@ -110,6 +113,7 @@ public class PreferencesFragment extends PreferenceFragmentCompat implements Pre
 		stereo.setSummaryOff(R.string.pref_tuner_stereo_off);
 		stereo.setOnPreferenceChangeListener((preference, newValue) -> {
 			mPreferences.put(C.PrefKey.TUNER_STEREO, (boolean) newValue);
+			markRestartRequired();
 			return true;
 		});
 		category.addPreference(stereo);
@@ -121,6 +125,7 @@ public class PreferencesFragment extends PreferenceFragmentCompat implements Pre
 		softMute.setSummaryOff(R.string.pref_tuner_soft_mute_off);
 		softMute.setOnPreferenceChangeListener((preference, newValue) -> {
 			mPreferences.put(C.PrefKey.TUNER_SOFT_MUTE, (boolean) newValue);
+			markRestartRequired();
 			return true;
 		});
 		category.addPreference(softMute);
@@ -133,6 +138,7 @@ public class PreferencesFragment extends PreferenceFragmentCompat implements Pre
 		antenna.setDialogMessage(R.string.pref_tuner_antenna_message);
 		antenna.setOnPreferenceChangeListener((preference, newValue) -> {
 			mPreferences.put(C.PrefKey.TUNER_ANTENNA, Utils.parseInt((String) newValue));
+			markRestartRequired();
 			return true;
 		});
 		category.addPreference(antenna);
@@ -408,8 +414,16 @@ public class PreferencesFragment extends PreferenceFragmentCompat implements Pre
 		return false;
 	}
 
-	private void warnApplyPreferenceOnlyAfterRestartApp() {
-		Toast.makeText(getContext(), R.string.pref_warning_applying_only_after_restart, Toast.LENGTH_LONG).show();
+	/**
+	 * Tuner keys are consumed by the service at launch, so changing them only
+	 * takes effect after a full restart. Flag the hosting activity result so
+	 * MainActivity can show the restart hint on return.
+	 */
+	private void markRestartRequired() {
+		final Activity activity = getActivity();
+		if (activity != null) {
+			activity.setResult(Activity.RESULT_OK, new Intent().putExtra("changed", true));
+		}
 	}
 
 	private void checkVersion() {

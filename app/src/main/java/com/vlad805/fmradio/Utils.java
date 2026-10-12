@@ -177,7 +177,7 @@ public class Utils {
 	}
 
 	public static String getMHz(final int kHz, final int precision) {
-		return String.format(Locale.ENGLISH, "%5." + precision + "f", kHz / 1000.);
+		return String.format(Locale.ENGLISH, "%." + precision + "f", kHz / 1000.);
 	}
 
 	public static String getTimeStringBySeconds(final long seconds) {

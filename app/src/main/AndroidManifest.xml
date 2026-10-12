@@ -8,6 +8,9 @@
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
 	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 	<uses-permission android:name="android.permission.READ_PHONE_STATE" />
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+	<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
 	<application
 			android:allowBackup="true"
@@ -20,6 +23,7 @@
 		<activity
 				android:name=".activity.MainActivity"
 				android:label="@string/main_activity_label"
+				android:exported="true"
 				android:screenOrientation="portrait">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN"/>
@@ -28,7 +32,8 @@
 		</activity>
 		<activity
 				android:name=".activity.SettingsActivity"
-				android:label="@string/pref_activity_title"/>
+				android:label="@string/pref_activity_title"
+				android:screenOrientation="portrait"/>
 			<activity
 				android:name=".activity.FavoriteListsActivity"/>
 		<activity
@@ -52,7 +57,7 @@
 				android:process=":service"
 				/>
 
-		<receiver android:name=".receivers.CallReceiver" android:enabled="true">
+		<receiver android:name=".receivers.CallReceiver" android:enabled="true" android:exported="false">
 			<intent-filter>
 				<action android:name="android.intent.action.PHONE_STATE" />
 				<action android:name="android.intent.action.NEW_OUTGOING_CALL" />

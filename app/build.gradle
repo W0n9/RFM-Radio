@@ -37,7 +37,7 @@ android {
         applicationId = appId
         minSdk = 23
         //noinspection ExpiredTargetSdkVersion
-        targetSdk = 24
+        targetSdk = 34
         versionCode = versionMajor * 10000 + versionMinor * 100 + versionPatch
         versionName = appVersionName
 

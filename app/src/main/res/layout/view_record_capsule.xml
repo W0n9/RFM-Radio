@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android">
+
+	<View
+			android:id="@+id/rec_dot"
+			android:layout_width="7dp"
+			android:layout_height="7dp"
+			android:background="@drawable/rec_dot" />
+
+	<TextView
+			android:id="@+id/rec_label"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginStart="7dp"
+			android:letterSpacing="0.1"
+			android:text="@string/rec_capsule_label"
+			android:textColor="@color/c_ink_dim"
+			android:textSize="11sp"
+			android:textStyle="bold" />
+
+	<TextView
+			android:id="@+id/rec_time"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginStart="6dp"
+			android:fontFeatureSettings="tnum"
+			android:textColor="@color/c_ink_dim"
+			android:textSize="11sp"
+			android:visibility="gone"
+			tools:text="00:00"
+			xmlns:tools="http://schemas.android.com/tools" />
+
+</merge>
