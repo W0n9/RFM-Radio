@@ -35,6 +35,7 @@ public class MtkAudioService extends AudioService {
 	@Override
 	public void startAudio() {
 		requestForFocus(true);
+		startPlaybackActivityKeeper();
 		// Without an FM patch the hostless loopback is silent on every output.
 		mRouter.execute(() -> {
 			if (RootAudioRouter.ensureDexDeployed(mContext)) {
@@ -46,6 +47,7 @@ public class MtkAudioService extends AudioService {
 	@Override
 	public void stopAudio() {
 		requestForFocus(false);
+		stopPlaybackActivityKeeper();
 		mRouter.execute(RootAudioRouter::releaseFmPatches);
 	}
 
