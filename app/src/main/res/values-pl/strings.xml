@@ -2,7 +2,6 @@
 	<string name="app_name">RFM Radio</string>
 	<string name="toggle_play_pause">Graj</string>
 	<string name="menu_more">Więcej</string>
-	<string name="settings_cd">Ustawienia</string>
 	<string name="frequency_slider_cd">Suwak częstotliwości</string>
 	<string name="favorite_add_cd">Dodaj bieżącą stację do ulubionych</string>
 	<string name="favorite_lists_entry">Listy</string>
@@ -15,7 +14,6 @@
 	<string name="status_searching_station">Wyszukiwanie stacji…</string>
 	<string name="status_installing">Instalowanie backendu FM…</string>
 	<string name="status_launching">Uruchamianie backendu FM…</string>
-	<string name="favorites_empty_hint">Lista ulubionych jest pusta. Naciśnij +, aby dodać bieżącą częstotliwość.</string>
 	<string name="favorites_done">Gotowe</string>
 	<string name="signal_strength_indicator">Siła sygnału</string>
 	<string name="stereo_mode_label">Stereo</string>

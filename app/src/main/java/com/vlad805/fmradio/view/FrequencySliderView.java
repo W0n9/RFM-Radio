@@ -271,8 +271,12 @@ public class FrequencySliderView extends View {
 	public void onInitializeAccessibilityNodeInfo(@NonNull final AccessibilityNodeInfo info) {
 		super.onInitializeAccessibilityNodeInfo(info);
 		info.setClassName("android.widget.SeekBar");
-		info.setRangeInfo(new AccessibilityNodeInfo.RangeInfo(
-				AccessibilityNodeInfo.RangeInfo.RANGE_TYPE_INT, mMin, mMax, mValue));
+		// RangeInfo.obtain is deprecated at compileSdk 36, but its replacement
+		// constructor needs API 30 while our minSdk is 23.
+		@SuppressWarnings("deprecation")
+		final AccessibilityNodeInfo.RangeInfo range = AccessibilityNodeInfo.RangeInfo.obtain(
+				AccessibilityNodeInfo.RangeInfo.RANGE_TYPE_INT, mMin, mMax, mValue);
+		info.setRangeInfo(range);
 		info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_FORWARD);
 		info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_BACKWARD);
 	}

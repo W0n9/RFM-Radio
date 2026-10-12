@@ -10,7 +10,6 @@
 	<string name="seek_backward_symbol" translatable="false">◂◂</string>
 	<string name="seek_forward_symbol" translatable="false">▸▸</string>
 	<string name="menu_more">More options</string>
-	<string name="settings_cd">Settings</string>
 	<string name="frequency_slider_cd">Frequency slider</string>
 	<string name="favorite_add_cd">Add current station to favorites</string>
 	<string name="favorite_lists_entry">Lists</string>
@@ -23,7 +22,6 @@
 	<string name="status_searching_station">Searching for station…</string>
 	<string name="status_installing">Installing FM backend…</string>
 	<string name="status_launching">Launching FM backend…</string>
-	<string name="favorites_empty_hint">No favorites yet. Tap + to add the current frequency.</string>
 	<string name="favorites_done">Done</string>
 	<string name="signal_strength_indicator">Signal strength</string>
 	<string name="stereo_mode_label">Stereo</string>

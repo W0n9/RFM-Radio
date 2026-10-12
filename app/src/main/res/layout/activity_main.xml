@@ -43,7 +43,7 @@
 			android:layout_height="40dp"
 			android:layout_marginTop="4dp"
 			android:background="?android:attr/selectableItemBackgroundBorderless"
-			android:contentDescription="@string/settings_cd"
+			android:contentDescription="@string/menu_settings"
 			android:src="@drawable/ic_settings"
 			app:layout_constraintEnd_toStartOf="@id/overflow_button"
 			app:layout_constraintTop_toTopOf="parent"
