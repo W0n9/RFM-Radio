@@ -127,6 +127,7 @@ public class RoutingAudioService extends AudioService implements IAudioRecordabl
 
 		Log.d(TAG, "startAudio: enabling FM route");
 		requestForFocus(true);
+		startPlaybackActivityKeeper();
 		registerVolumeListener();
 		mIsActive = true;
 		applyRoute(true, mSpeakerEnabled, true);
@@ -152,6 +153,7 @@ public class RoutingAudioService extends AudioService implements IAudioRecordabl
 		Log.d(TAG, "stopAudio: disabling FM route");
 		applyRoute(false, mSpeakerEnabled, false);
 		mIsActive = false;
+		stopPlaybackActivityKeeper();
 		unregisterVolumeListener();
 		requestForFocus(false);
 	}

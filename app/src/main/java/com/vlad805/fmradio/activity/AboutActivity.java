@@ -9,12 +9,14 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.vlad805.fmradio.BuildConfig;
 import com.vlad805.fmradio.R;
 import com.vlad805.fmradio.Utils;
+import com.vlad805.fmradio.helper.EdgeToEdgeHelper;
 
 public class AboutActivity extends AppCompatActivity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_about);
+		EdgeToEdgeHelper.apply(this);
 
 		setSupportActionBar(findViewById(R.id.about_toolbar));
 

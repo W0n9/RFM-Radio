@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.vlad805.fmradio.R;
 import com.vlad805.fmradio.Utils;
+import com.vlad805.fmradio.helper.EdgeToEdgeHelper;
 
 public class StartupBlockedActivity extends AppCompatActivity {
     private static final String EXTRA_REASON = "reason";
@@ -44,6 +45,7 @@ public class StartupBlockedActivity extends AppCompatActivity {
 
         setTitle(titleRes);
         setContentView(R.layout.activity_startup_blocked);
+        EdgeToEdgeHelper.apply(this);
         setSupportActionBar(findViewById(R.id.startup_blocked_toolbar));
         ((TextView) findViewById(R.id.startup_blocked_title)).setText(titleRes);
         ((TextView) findViewById(R.id.startup_blocked_message)).setText(messageRes);

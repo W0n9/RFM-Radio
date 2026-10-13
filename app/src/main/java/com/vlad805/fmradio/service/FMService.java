@@ -200,12 +200,15 @@ public class FMService extends Service implements FMEventCallback, OnTrayPrefere
         // Active sessions receive media buttons; while paused-but-alive the play key
         // resumes the radio instead of falling through to another app's session.
         mMediaSession.setActive(playing);
+        // PLAYING must report speed 1: the media button router treats a zero-speed
+        // playing session as inactive and stops routing keys to it (headset, lock screen).
         mMediaSession.setPlaybackState(new PlaybackStateCompat.Builder()
                 .setActions(PlaybackStateCompat.ACTION_PLAY | PlaybackStateCompat.ACTION_PLAY_PAUSE
                         | PlaybackStateCompat.ACTION_PAUSE | PlaybackStateCompat.ACTION_STOP
                         | PlaybackStateCompat.ACTION_SKIP_TO_NEXT | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
                         | PlaybackStateCompat.ACTION_SEEK_TO)
-                .setState(playing ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED, 0, 0f)
+                .setState(playing ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED,
+                        PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, playing ? 1f : 0f)
                 .build());
     }
 

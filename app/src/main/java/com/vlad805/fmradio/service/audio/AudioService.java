@@ -1,10 +1,12 @@
 package com.vlad805.fmradio.service.audio;
 
 import android.content.Context;
+import android.media.AudioAttributes;
 import android.media.AudioDeviceInfo;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
+import android.media.AudioTrack;
 import android.media.MediaRecorder;
 import static com.vlad805.fmradio.Utils.sleep;
 
@@ -20,6 +22,9 @@ public abstract class AudioService {
 	protected int mSampleRate;
 	protected int mBufferSize = 16384;
 	protected int mAudioSource = 1998;
+
+	/** Silent looped track that marks the app as an active audio player to AudioService. */
+	private AudioTrack mPlaybackActivityTrack;
 
 	public AudioService(Context context) {
 		this(context, 44100);
@@ -156,5 +161,62 @@ public abstract class AudioService {
 		} else { // If focus return...
 			mAudioManager.abandonAudioFocus(null);
 		}
+	}
+
+	/**
+	 * Keeps a silent looped AudioTrack while tuner audio is routed in hardware, so the
+	 * app counts as an active audio player. Without it the system leaves the media
+	 * button session null and headset/lock screen keys never reach our media session,
+	 * because no audio stream flows through the app process.
+	 */
+	protected void startPlaybackActivityKeeper() {
+		if (mPlaybackActivityTrack != null) {
+			return;
+		}
+
+		final int sampleRate = 44100;
+		final int frames = sampleRate / 10; // 100 ms of silence, looped forever
+		final int byteCount = frames * 2;   // 16-bit mono
+
+		try {
+			mPlaybackActivityTrack = new AudioTrack.Builder()
+					.setAudioAttributes(new AudioAttributes.Builder()
+							.setUsage(AudioAttributes.USAGE_MEDIA)
+							.setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+							.build())
+					.setAudioFormat(new AudioFormat.Builder()
+							.setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+							.setSampleRate(sampleRate)
+							.setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+							.build())
+					.setTransferMode(AudioTrack.MODE_STATIC)
+					.setBufferSizeInBytes(byteCount)
+					.build();
+
+			mPlaybackActivityTrack.write(new byte[byteCount], 0, byteCount);
+			mPlaybackActivityTrack.setVolume(0f);
+			mPlaybackActivityTrack.setLoopPoints(0, frames, -1);
+			mPlaybackActivityTrack.play();
+		} catch (final Throwable t) {
+			android.util.Log.e("PlaybackKeeper", "Silent track failed; headset media keys may not route", t);
+			if (mPlaybackActivityTrack != null) {
+				mPlaybackActivityTrack.release();
+				mPlaybackActivityTrack = null;
+			}
+		}
+	}
+
+	/** Stops and releases the silent playback activity track, if running. */
+	protected void stopPlaybackActivityKeeper() {
+		if (mPlaybackActivityTrack == null) {
+			return;
+		}
+
+		try {
+			mPlaybackActivityTrack.stop();
+		} catch (final IllegalStateException ignored) {
+		}
+		mPlaybackActivityTrack.release();
+		mPlaybackActivityTrack = null;
 	}
 }

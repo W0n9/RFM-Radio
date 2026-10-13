@@ -29,15 +29,14 @@ if (!hasReleaseSigning) {
 }
 
 android {
-    compileSdk = 36
+    compileSdk = 37
     namespace = "com.vlad805.fmradio"
     ndkVersion = requiredNdkVersion
 
     defaultConfig {
         applicationId = appId
         minSdk = 23
-        //noinspection ExpiredTargetSdkVersion
-        targetSdk = 34
+        targetSdk = 37
         versionCode = versionMajor * 10000 + versionMinor * 100 + versionPatch
         versionName = appVersionName
 

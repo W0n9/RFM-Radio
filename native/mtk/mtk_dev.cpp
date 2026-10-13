@@ -72,6 +72,17 @@ bool mtk_get_rssi(int fd, int32_t *rssi) {
     return mtk_ioctl(fd, MTK_IOCTL_GETRSSI, rssi, "get_rssi");
 }
 
+bool mtk_soft_mute_tune(int fd, uint16_t freq, int32_t *rssi, int32_t *valid) {
+    fm_softmute_tune_t parm = {};
+    parm.freq = freq;
+    if (!mtk_ioctl(fd, MTK_IOCTL_SOFT_MUTE_TUNE, &parm, "soft_mute_tune")) {
+        return false;
+    }
+    *rssi = parm.rssi;
+    *valid = parm.valid;
+    return true;
+}
+
 bool mtk_set_mute(int fd, bool mute) {
     uint32_t arg = mute ? 1 : 0;
     return mtk_ioctl(fd, MTK_IOCTL_MUTE, &arg, "mute");

@@ -7,45 +7,57 @@
 namespace {
 
 // Scripted fake environment: strong stations at fixed frequencies, weak
-// elsewhere; a fake clock; tune/rssi calls recorded.
+// (kernel-invalid) elsewhere; a fake clock advanced by each probe (each
+// SOFT_MUTE_TUNE costs real firmware time); probe calls recorded.
 struct FakeEnv {
     StepScanEnv env;
-    std::vector<uint32_t> tuned;
-    std::vector<uint32_t> stations;  // kHz with strong signal
-    std::vector<std::pair<uint32_t, int32_t>> graded;  // per-frequency rssi, wins over stations
-    int32_t weak_dbm = -100;
-    int32_t strong_dbm = -60;
+    std::vector<uint32_t> probed;
+    std::vector<uint32_t> stations;  // kHz, valid + strong signal
+    std::vector<std::pair<uint32_t, int32_t>> graded;  // per-frequency raw rssi (valid), wins over stations
+    std::vector<uint32_t> loud_invalid;  // strong raw level but kernel verdict = 0
+    int32_t strong_raw = -100;
     uint64_t now = 0;
     bool cancel = false;
-    bool fail_tune_at_enabled = false;
-    uint32_t fail_tune_at = 0;
+    int cancel_after_n_probes = 0;  // 0 = never; cancelled once N probes have run
+    bool fail_probe_at_enabled = false;
+    uint32_t fail_probe_at = 0;
+    int probes = 0;
 };
 
-bool fake_tune(uint32_t freq_khz, void *ctx) {
+bool fake_probe(uint32_t freq_khz, int32_t *rssi, int32_t *valid, void *ctx) {
     FakeEnv *e = static_cast<FakeEnv *>(ctx);
-    e->tuned.push_back(freq_khz);
-    if (e->fail_tune_at_enabled && freq_khz == e->fail_tune_at) {
+    e->probed.push_back(freq_khz);
+    e->probes++;
+    e->now += 100;
+    if (e->fail_probe_at_enabled && freq_khz == e->fail_probe_at) {
         return false;
     }
-    return true;
-}
-
-bool fake_rssi(int32_t *out, void *ctx) {
-    FakeEnv *e = static_cast<FakeEnv *>(ctx);
-    const uint32_t cur = e->tuned.empty() ? 0 : e->tuned.back();
+    if (e->cancel_after_n_probes > 0 && e->probes >= e->cancel_after_n_probes) {
+        e->cancel = true;
+    }
     for (const auto &g : e->graded) {
-        if (cur == g.first) {
-            *out = g.second;
+        if (freq_khz == g.first) {
+            *rssi = g.second;
+            *valid = 1;
             return true;
         }
     }
     for (uint32_t station : e->stations) {
-        if (cur == station) {
-            *out = e->strong_dbm;
+        if (freq_khz == station) {
+            *rssi = e->strong_raw;
+            *valid = 1;
             return true;
         }
     }
-    *out = e->weak_dbm;
+    for (uint32_t bad : e->loud_invalid) {
+        if (freq_khz == bad) {
+            *rssi = -50;
+            *valid = 0;
+            return true;
+        }
+    }
+    *rssi = -300;
+    *valid = 0;
     return true;
 }
 
@@ -57,12 +69,8 @@ uint64_t fake_now(void *ctx) {
     return static_cast<FakeEnv *>(ctx)->now;
 }
 
-void fake_sleep(uint32_t ms, void *ctx) {
-    static_cast<FakeEnv *>(ctx)->now += ms;
-}
-
 StepScanEnv make_env(FakeEnv *e) {
-    return StepScanEnv{fake_tune, fake_rssi, fake_cancel, fake_now, fake_sleep, e};
+    return StepScanEnv{fake_probe, fake_cancel, fake_now, e};
 }
 
 StepScanConfig make_config() {
@@ -71,8 +79,7 @@ StepScanConfig make_config() {
             .upper_khz = 108000,
             .start_khz = 90000,
             .step_khz = 100,
-            .threshold_dbm = -74,
-            .settle_ms = 60,
+            .threshold_raw = -235,
             .deadline_ms = 100000,
     };
 }
@@ -103,57 +110,41 @@ TEST(StepScanTest, FullScanVisitsEveryChannelExactlyOnce) {
     step_scan_run(StepScanMode::kFullScan, config, make_env(&e), &collector);
 
     // 87500..108000 by 200 -> 103 channels, last on-grid is 107900
-    ASSERT_EQ(e.tuned.size(), 103u);
-    EXPECT_EQ(e.tuned.front(), 87500u);
-    EXPECT_EQ(e.tuned.back(), 107900u);
+    ASSERT_EQ(e.probed.size(), 103u);
+    EXPECT_EQ(e.probed.front(), 87500u);
+    EXPECT_EQ(e.probed.back(), 107900u);
 }
 
 TEST(StepScanTest, FullScanCancelStopsWithoutCompleting) {
     FakeEnv e;
-    ScanResultCollector collector;
     e.stations = {88000, 90000};
+    e.cancel_after_n_probes = 3;
 
-    // Cancel after the third tune.
-    struct CancelCtx {
-        FakeEnv *env;
-    } cc{&e};
-
-    StepScanEnv env = make_env(&e);
-    // Wrap cancel: trigger after N tunes via the tune hook.
-    static int tune_count = 0;
-    tune_count = 0;
-    env.tune = [](uint32_t f, void *ctx) {
-        FakeEnv *ee = static_cast<FakeEnv *>(ctx);
-        if (++tune_count == 3) {
-            ee->cancel = true;
-        }
-        return fake_tune(f, ctx);
-    };
-
-    const StepScanOutcome outcome = step_scan_run(StepScanMode::kFullScan, make_config(), env, &collector);
+    ScanResultCollector collector;
+    const StepScanOutcome outcome = step_scan_run(StepScanMode::kFullScan, make_config(), make_env(&e), &collector);
 
     EXPECT_EQ(outcome.status, StepScanStatus::kCancelled);
     EXPECT_EQ(outcome.resume_frequency_khz, 90000u);
-    EXPECT_LT(e.tuned.size(), 100u);  // stopped early, never reached the end
+    EXPECT_LT(e.probed.size(), 100u);  // stopped early, never reached the end
 }
 
 TEST(StepScanTest, FullScanDeadlineAborts) {
     FakeEnv e;
     ScanResultCollector collector;
     StepScanConfig config = make_config();
-    config.deadline_ms = 500;  // settle is 60ms per step -> a few steps only
+    config.deadline_ms = 500;  // each probe costs 100 fake ms -> a few steps only
 
     const StepScanOutcome outcome = step_scan_run(StepScanMode::kFullScan, config, make_env(&e), &collector);
 
     EXPECT_EQ(outcome.status, StepScanStatus::kAborted);
-    EXPECT_LT(e.tuned.size(), 20u);
+    EXPECT_LT(e.probed.size(), 20u);
 }
 
-TEST(StepScanTest, FullScanSkipsTuneFailures) {
+TEST(StepScanTest, FullScanSkipsProbeFailures) {
     FakeEnv e;
     e.stations = {87600};
-    e.fail_tune_at_enabled = true;
-    e.fail_tune_at = 87700;
+    e.fail_probe_at_enabled = true;
+    e.fail_probe_at = 87700;
     ScanResultCollector collector;
     StepScanConfig config = make_config();
     config.step_khz = 100;
@@ -166,6 +157,23 @@ TEST(StepScanTest, FullScanSkipsTuneFailures) {
     collector.copy_sorted(&result);
     ASSERT_EQ(result.count, 1);
     EXPECT_EQ(result.frequencies_khz[0], 87600);
+}
+
+TEST(StepScanTest, FullScanIgnoresKernelInvalidChannels) {
+    FakeEnv e;
+    // A loud but kernel-invalid channel (e.g. PAMD/ATDC garbage) must not list
+    // even though its raw level dwarfs the threshold.
+    e.loud_invalid = {99600};
+    ScanResultCollector collector;
+    StepScanConfig config = make_config();
+    config.lower_khz = 99400;
+    config.upper_khz = 99800;
+
+    step_scan_run(StepScanMode::kFullScan, config, make_env(&e), &collector);
+
+    ScanResult result;
+    collector.copy_sorted(&result);
+    EXPECT_EQ(result.count, 0);
 }
 
 TEST(StepScanTest, SeekUpFindsNextStation) {
@@ -199,7 +207,7 @@ TEST(StepScanTest, SeekUpWrapsAroundBandEdge) {
     EXPECT_EQ(outcome.found_frequency_khz, 87600u);
     // Must have wrapped: visited the upper bound before landing on 87600.
     bool hit_upper = false;
-    for (uint32_t f : e.tuned) {
+    for (uint32_t f : e.probed) {
         if (f == 108000) hit_upper = true;
     }
     EXPECT_TRUE(hit_upper);
@@ -213,7 +221,7 @@ TEST(StepScanTest, SeekFullCircleWithoutStationReturnsToStart) {
     EXPECT_EQ(outcome.status, StepScanStatus::kNotFound);
     EXPECT_EQ(outcome.resume_frequency_khz, 90000u);
     // Full circle: visited every channel once.
-    EXPECT_EQ(e.tuned.size(), 205u);
+    EXPECT_EQ(e.probed.size(), 205u);
 }
 
 TEST(StepScanTest, ScanMergesAdjacentChannelsToLocalPeak) {
@@ -249,6 +257,58 @@ TEST(StepScanTest, ScanPlateauListsOnce) {
     EXPECT_EQ(result.count, 1);  // a flat plateau yields its rightmost channel
 }
 
+// Suggestion C: the first hit may be a shoulder of a wider carrier; the seek
+// must walk the next channels and land on the strongest one.
+TEST(StepScanTest, SeekWalksToPeakNotShoulder) {
+    FakeEnv e;
+    e.graded = {{91300, -200}, {91400, -100}, {91500, -150}};
+
+    const StepScanOutcome outcome = step_scan_run(StepScanMode::kSeekUp, make_config(), make_env(&e), nullptr);
+
+    EXPECT_EQ(outcome.status, StepScanStatus::kFound);
+    EXPECT_EQ(outcome.found_frequency_khz, 91400u);  // 91300 hit, 91400 stronger
+    EXPECT_EQ(outcome.resume_frequency_khz, 91400u);
+}
+
+TEST(StepScanTest, SeekRefineStopsOnWeakerNeighbor) {
+    FakeEnv e;
+    e.graded = {{91300, -100}, {91400, -120}};
+
+    const StepScanOutcome outcome = step_scan_run(StepScanMode::kSeekUp, make_config(), make_env(&e), nullptr);
+
+    EXPECT_EQ(outcome.status, StepScanStatus::kFound);
+    EXPECT_EQ(outcome.found_frequency_khz, 91300u);
+    // Refinement stops at the weaker neighbor: 91500 is never probed.
+    EXPECT_EQ(e.probed.back(), 91400u);
+}
+
+TEST(StepScanTest, SeekRefineStopsAtBandEdge) {
+    FakeEnv e;
+    e.stations = {108000};
+
+    const StepScanOutcome outcome = step_scan_run(StepScanMode::kSeekUp, make_config(), make_env(&e), nullptr);
+
+    EXPECT_EQ(outcome.status, StepScanStatus::kFound);
+    EXPECT_EQ(outcome.found_frequency_khz, 108000u);
+    // Nothing beyond the band may be probed.
+    for (uint32_t f : e.probed) {
+        EXPECT_LE(f, 108000u);
+    }
+}
+
+TEST(StepScanTest, SeekRefineHonorsCancel) {
+    FakeEnv e;
+    e.stations = {91300};
+    // 90100..91300 = 13 probes; cancel lands right after the hit, so the
+    // first refinement probe must never run.
+    e.cancel_after_n_probes = 13;
+
+    const StepScanOutcome outcome = step_scan_run(StepScanMode::kSeekUp, make_config(), make_env(&e), nullptr);
+
+    EXPECT_EQ(outcome.status, StepScanStatus::kCancelled);
+    EXPECT_EQ(outcome.resume_frequency_khz, 90000u);
+}
+
 TEST(StepScanTest, SeekHonorsCancel) {
     FakeEnv e;
     e.cancel = true;  // already cancelled before starting
@@ -256,7 +316,7 @@ TEST(StepScanTest, SeekHonorsCancel) {
     const StepScanOutcome outcome = step_scan_run(StepScanMode::kSeekUp, make_config(), make_env(&e), nullptr);
 
     EXPECT_EQ(outcome.status, StepScanStatus::kCancelled);
-    EXPECT_TRUE(e.tuned.empty());
+    EXPECT_TRUE(e.probed.empty());
 }
 
 }  // namespace
