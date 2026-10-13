@@ -1,52 +1,36 @@
-# Real FM Radio [![Releases](https://img.shields.io/github/downloads/vladislav805/RFM-Radio/total)](https://github.com/vladislav805/RFM-Radio/releases/latest)
+# RFM Radio [![Downloads](https://img.shields.io/github/downloads/W0n9/RFM-Radio/total)](https://github.com/W0n9/RFM-Radio/releases/latest)
 
-Real FM hardware radio app for Android Qualcomm Snapdragon based devices.
+English | [简体中文](README.zh-CN.md)
 
-[<img alt="IzzyRepo" src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" width="176" />](https://apt.izzysoft.de/fdroid/index/apk/com.vlad805.fmradio)
+Real FM hardware radio app for Android. It drives the built-in FM tuner directly through a root native backend — no internet streaming involved.
+
+This is an actively maintained fork of [vladislav805/RFM-Radio](https://github.com/vladislav805/RFM-Radio); APK releases are published from this repository. Compared to upstream, this fork adds MediaTek device support, a redesigned UI, media button handling, and keeps pace with current Android target SDK requirements.
 
 ## Requirements
 
 - Android 6.0+ (SDK 23+).
-- Root access is required, especially on AOSP-based ROMs.
+- Root access is required.
+- A wired headset — it usually serves as the antenna.
+
+## Supported hardware
+
+The native backend detects the available FM hardware at runtime:
+
+| Backend | Detection | Verified devices |
+| --- | --- | --- |
+| Qualcomm legacy (V4L2) | `/dev/radio0` exists | Redmi 4A (Snapdragon 425), Mi A1 (Snapdragon 625) |
+| Qualcomm HAL (`fm_helium.so`) | HAL library present, no `/dev/radio0` | Poco X3 Pro (Snapdragon 860) |
+| MediaTek (`/dev/fm`) | `/dev/fm` exists | Redmi Note 9 5G (MT6853 / MT6631) |
 
 ## Features
 
-- Live FM playback using supported hardware backend.
-- RDS metadata: PS, RT, PTY.
-- Recording to `.wav` and `.mp3`.
-- Favorites (presets) with custom names.
-- Multiple favorite lists.
-- Favorite list manager screen with import/export.
-
-## Favorites UX
-
-- Main screen: tune quickly, reorder presets, switch active favorite list.
-- Favorite Lists screen: manage lists (create, rename, remove, import, export).
-
-## Settings highlights
-
-### Tuner
-
-#### Enable RDS
-
-RDS is a radio data system.
-When this option **is enabled**, the application will display data transmitted from the radio station, such as the Program Service and Radio Text.
-
-#### Antenna
-
-Select an antenna. In most cases: 0 - default, headphones; 1 - internal (bad quality).
-
-### Application
-#### Autostart
-
-If enabled, audio from the radio will be immediately turned on after starting the application.
-
-
-### Notifications
-#### Show PS in title
-
-If the option is enabled, then with the "Enable RDS" option enabled, the Program Service and Radio Text will be displayed in the notification header.
-
+- Live FM playback using the real tuner (Qualcomm or MediaTek).
+- RDS metadata: PS, RT, PTY, PI, AF, and station country.
+- Recording to `.wav` and `.mp3` (Qualcomm devices).
+- Favorites: multiple named lists with import/export; the main screen shows them as a horizontal chip row.
+- Play through speaker (MediaTek; keep the headset connected — on some hardware the speaker amp taps the headphone path).
+- Media button and wired headset control while playing.
+- Region/band selection (Europe, US, Japan, Japan-wide), channel spacing, stereo, soft mute, antenna, power saving.
 
 ## Screenshots
 
@@ -54,23 +38,20 @@ If the option is enabled, then with the "Enable RDS" option enabled, the Program
 
 ## Building
 
-Clone the repository with submodules, or initialize them before building:
+Clone with submodules (the MP3 encoder), or initialize them in an existing checkout:
 
 ```bash
-git clone --recursive https://github.com/vladislav805/RFM-Radio.git
+git clone --recursive https://github.com/W0n9/RFM-Radio.git
+# or: git submodule update --init --recursive
 ```
 
-For an existing checkout:
-
-```bash
-git submodule update --init --recursive
-```
+Then build — an Android SDK must be available via `ANDROID_HOME` or `local.properties`:
 
 ```bash
 ./gradlew :app:assembleDebug
 ```
 
-Gradle builds the app native MP3 encoder and FM backend assets automatically. For native/FM backend-related work you also need Android NDK headers and device-specific tooling.
+Gradle cross-compiles the native FM backend under `native/` into assets automatically (requires Android NDK 29.0.14033849 and CMake 3.22.1). Native host tests: `make test-native`.
 
 ## Inspired by
 
@@ -80,11 +61,16 @@ Gradle builds the app native MP3 encoder and FM backend assets automatically. Fo
 
 ## Disclaimer
 
-The project is based on hard-to-piece collected documentation around Tavarua, Iris, I2C, V4L2.
+The project is based on hard-to-piece collected documentation around Tavarua, Iris, I2C, V4L2 — and, in this fork, on reverse-engineered MediaTek driver interfaces.
 
 ## Contributors
 
-- Vladislav Veluga ([@vladislav805](https://github.com/vladislav805)) — developer
+- Vladislav Veluga ([@vladislav805](https://github.com/vladislav805)) — developer of the original project
 - Mike Reid ([@mikereidis](https://github.com/mikereidis)) — developer of Spirit 1/2
 - Konstantin Manaev ([@SoSlowMan](https://github.com/SoSlowMan)) — translator (English)
 - Andus ([@AndusDEV](https://github.com/AndusDEV)) — translator (Polish)
+- TsungWing ([@W0n9](https://github.com/W0n9)) — fork maintainer (MediaTek backend, UI, modernization)
+
+## License
+
+[GPL-3.0](LICENSE)
