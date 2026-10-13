@@ -61,3 +61,16 @@ app/src/main/assets/fmbin*
 .vscode/settings.json
 .ideas
 /_*
+
+# Scratch working area (decompiled APKs, prototypes, debug dumps)
+.scratch/
+
+# Local tool configuration (per-machine, never shared)
+.claude/settings.local.json
+
+# Kotlin / JVM
+.kotlin/
+*.hprof
+
+# OS cruft
+.DS_Store

@@ -10,6 +10,7 @@ session recover the project's architecture quickly.
 | Qualcomm native FM backend | [`native-fm-backend.md`](native-fm-backend.md) |
 | MediaTek FM port research (cannon/MT6853) | [`mtk-fm-port-research.md`](mtk-fm-port-research.md) |
 | MIUI FM seek/scan mechanism (cannon) | [`miui-fm-seek-research.md`](miui-fm-seek-research.md) |
+| targetSdk 24 → 37 upgrade research | [`targetsdk-37-upgrade-research.md`](targetsdk-37-upgrade-research.md) |
 
 Treat these documents as navigation aids, not substitutes for reading the files
 being changed. If implementation and documentation disagree, implementation is
